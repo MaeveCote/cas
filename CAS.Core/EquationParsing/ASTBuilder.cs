@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CAS.Core
+namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// Builds an Abstract Syntax Tree from a list of tokens in infix notation.
@@ -43,8 +43,8 @@ namespace CAS.Core
             // Prevent comparison with parenthesis
             if (op2.Type is LeftParenthesis)
               break;
-            int comparison = op1.ComparePriority(((Operator)op2.Type));
-            if (comparison < 0 || (!op1.isRightAssociative && comparison == 0))
+            int comparison = op1.ComparePriority((Operator)op2.Type);
+            if (comparison < 0 || !op1.isRightAssociative && comparison == 0)
             {
               operators.Pop();
               AddNode(output, op2);

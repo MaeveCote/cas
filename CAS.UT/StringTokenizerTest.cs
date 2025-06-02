@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
-using CAS.Core;
+using CAS.Core.EquationParsing;
 
 namespace CAS.UT
 {
@@ -12,15 +12,23 @@ namespace CAS.UT
   {
     // Useful to generate tests
     // Console.WriteLine("Assert.Equal(" + "\"" + s1 + "\"" + ", s1);");
-
+    
     /// <summary>
-    /// Asser that dictionnaries are equal.
+    /// Assert that two sets are equal
     /// </summary>
-    private void AssertDictEqual(Dictionary<string, double?> a, Dictionary<string, double?> b)
+    public static void AssertSetEqual<T>(HashSet<T> expected, HashSet<T> actual)
     {
-      bool isEqual = a.Count == b.Count &&
-             a.All(pair => b.TryGetValue(pair.Key, out double? val) && val == pair.Value);
-      Assert.True(isEqual);
+        Assert.Equal(expected.Count, actual.Count);
+
+        foreach (var item in expected)
+        {
+            Assert.Contains(item, actual);
+        }
+
+        foreach (var item in actual)
+        {
+            Assert.Contains(item, expected);
+        }
     }
 
     private string TokenListToTestString(List<Token> tokenizedString)
@@ -44,14 +52,14 @@ namespace CAS.UT
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
       string s3 = TokenListToTestString(result3.TokenizedExpression);
-      var expectedSymbolTable = new Dictionary<string, double?>();
+      var expectedSymbols = new HashSet<string>();
 
       Assert.Equal("Number(5)Operator('-')Number(2)Operator('+')Number(3)", s1);
-      AssertDictEqual(result1.SymbolTable, expectedSymbolTable);
+      AssertSetEqual(expectedSymbols, result1.Symbols);
       Assert.Equal("Number(6)Operator('*')Number(3)Operator('/')Number(2)", s2);
-      AssertDictEqual(result2.SymbolTable, expectedSymbolTable);
+      AssertSetEqual(expectedSymbols, result2.Symbols);
       Assert.Equal("LeftParenthesis('(')Number(1)Operator('+')Number(2)RightParenthesis(')')Operator('*')Number(3)", s3);
-      AssertDictEqual(result3.SymbolTable, expectedSymbolTable);
+      AssertSetEqual(expectedSymbols, result3.Symbols);
     }
 
     [Fact]
@@ -67,29 +75,16 @@ namespace CAS.UT
       string s2 = TokenListToTestString(result2.TokenizedExpression);
       string s3 = TokenListToTestString(result3.TokenizedExpression);
 
-      var expectedSymbolTable1 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
-
-      var expectedSymbolTable2 = new Dictionary<string, double?>
-      {
-          { "a", null },
-          { "b", null },
-          { "c", null }
-      };
-
-      var expectedSymbolTable3 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
+      var expectedSymbols1 = new HashSet<string> { "x" };
+      var expectedSymbols2 = new HashSet<string> { "a", "b", "c" };
+      var expectedSymbols3 = new HashSet<string> { "x" };
 
       Assert.Equal("Variable('x')Operator('^')Number(2)Operator('+')Number(2)Operator('*')Variable('x')Operator('+')Number(1)", s1);
-      AssertDictEqual(result1.SymbolTable, expectedSymbolTable1);
+      AssertSetEqual(expectedSymbols1, result1.Symbols);
       Assert.Equal("Variable('a')Operator('^')Number(3)Operator('+')Variable('b')Operator('^')Number(2)Operator('+')Variable('c')", s2);
-      AssertDictEqual(result2.SymbolTable, expectedSymbolTable2);
+      AssertSetEqual(expectedSymbols2, result2.Symbols);
       Assert.Equal("Number(3)Operator('*')Variable('x')Operator('^')Number(2)Operator('-')Number(4)Operator('*')Variable('x')Operator('+')Number(5)", s3);
-      AssertDictEqual(result3.SymbolTable, expectedSymbolTable3);
+      AssertSetEqual(expectedSymbols3, result3.Symbols);
     }
 
     [Fact]
@@ -100,29 +95,21 @@ namespace CAS.UT
       var result1 = tokenizer.Tokenize("sin(x)");
       var result2 = tokenizer.Tokenize("log(10, 100)");
       var result3 = tokenizer.Tokenize("sqrt(4 + (2 * x))");
-      
+
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
       string s3 = TokenListToTestString(result3.TokenizedExpression);
 
-      var expectedSymbolTable1 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
-
-      var expectedSymbolTable2 = new Dictionary<string, double?>();
-
-      var expectedSymbolTable3 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
+      var expectedSymbols1 = new HashSet<string> { "x" };
+      var expectedSymbols2 = new HashSet<string>();
+      var expectedSymbols3 = new HashSet<string> { "x" };
 
       Assert.Equal("Function('sin')LeftParenthesis('(')Variable('x')RightParenthesis(')')", s1);
-      AssertDictEqual(result1.SymbolTable, expectedSymbolTable1);
+      AssertSetEqual(expectedSymbols1, result1.Symbols);
       Assert.Equal("Function('log')LeftParenthesis('(')Number(10)FunctionArgumentSeparator(',')Number(100)RightParenthesis(')')", s2);
-      AssertDictEqual(result2.SymbolTable, expectedSymbolTable2);
+      AssertSetEqual(expectedSymbols2, result2.Symbols);
       Assert.Equal("Function('sqrt')LeftParenthesis('(')Number(4)Operator('+')LeftParenthesis('(')Number(2)Operator('*')Variable('x')RightParenthesis(')')RightParenthesis(')')", s3);
-      AssertDictEqual(result3.SymbolTable, expectedSymbolTable3);
+      AssertSetEqual(expectedSymbols3, result3.Symbols);
     }
 
     [Fact]
@@ -138,28 +125,16 @@ namespace CAS.UT
       string s2 = TokenListToTestString(result2.TokenizedExpression);
       string s3 = TokenListToTestString(result3.TokenizedExpression);
 
-      var expectedSymbolTable1 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
-
-      var expectedSymbolTable2 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
-
-      var expectedSymbolTable3 = new Dictionary<string, double?>
-      {
-          { "b", null },
-          { "c", null }
-      };
+      var expectedSymbols1 = new HashSet<string> { "x" };
+      var expectedSymbols2 = new HashSet<string> { "x" };
+      var expectedSymbols3 = new HashSet<string> { "b", "c" };
 
       Assert.Equal("Number(3)Operator('*')Variable('x')", s1);
-      AssertDictEqual(result1.SymbolTable, expectedSymbolTable1);
+      AssertSetEqual(expectedSymbols1, result1.Symbols);
       Assert.Equal("Number(2)Operator('*')Function('sin')LeftParenthesis('(')Variable('x')RightParenthesis(')')", s2);
-      AssertDictEqual(result2.SymbolTable, expectedSymbolTable2);
+      AssertSetEqual(expectedSymbols2, result2.Symbols);
       Assert.Equal("Number(4)Operator('*')LeftParenthesis('(')Variable('b')Operator('+')Variable('c')RightParenthesis(')')", s3);
-      AssertDictEqual(result3.SymbolTable, expectedSymbolTable3);
+      AssertSetEqual(expectedSymbols3, result3.Symbols);
     }
 
     [Fact]
@@ -175,30 +150,17 @@ namespace CAS.UT
       string s2 = TokenListToTestString(result2.TokenizedExpression);
       string s3 = TokenListToTestString(result3.TokenizedExpression);
 
-      var expectedSymbolTable1 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
-
-      var expectedSymbolTable2 = new Dictionary<string, double?>
-      {
-          { "x", null }
-      };
-
-      var expectedSymbolTable3 = new Dictionary<string, double?>
-      {
-          { "x", null },
-          { "y", null }
-      };
+      var expectedSymbols1 = new HashSet<string> { "x" };
+      var expectedSymbols2 = new HashSet<string> { "x" };
+      var expectedSymbols3 = new HashSet<string> { "x", "y" };
 
       Assert.Equal("Function('f')LeftParenthesis('(')Function('g')LeftParenthesis('(')Variable('x')RightParenthesis(')')RightParenthesis(')')", s1);
-      AssertDictEqual(result1.SymbolTable, expectedSymbolTable1);
+      AssertSetEqual(expectedSymbols1, result1.Symbols);
       Assert.Equal("Function('h')LeftParenthesis('(')Function('f')LeftParenthesis('(')Function('g')LeftParenthesis('(')Variable('x')RightParenthesis(')')RightParenthesis(')')RightParenthesis(')')", s2);
-      AssertDictEqual(result2.SymbolTable, expectedSymbolTable2);
+      AssertSetEqual(expectedSymbols2, result2.Symbols);
       Assert.Equal("Function('f')LeftParenthesis('(')Function('g')LeftParenthesis('(')Variable('x')RightParenthesis(')')Operator('+')Function('h')LeftParenthesis('(')Variable('y')RightParenthesis(')')RightParenthesis(')')", s3);
-      AssertDictEqual(result3.SymbolTable, expectedSymbolTable3);
+      AssertSetEqual(expectedSymbols3, result3.Symbols);
     }
-
     [Fact]
     public void InvalidExpressions()
     {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CAS.Core
+namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// Holds token value for elements of a mathematical equation.

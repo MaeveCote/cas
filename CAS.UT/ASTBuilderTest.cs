@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
-using CAS.Core;
+using CAS.Core.EquationParsing;
 
 namespace CAS.UT
 {

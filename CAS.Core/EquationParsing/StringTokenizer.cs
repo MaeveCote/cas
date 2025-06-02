@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace CAS.Core
+namespace CAS.Core.EquationParsing
 {
   // Interesting to Add:
   //  -Support for symbol notation using the '\' character
@@ -43,7 +43,7 @@ namespace CAS.Core
     public StringTokenizerResult Tokenize(string mathExpression)
     {
       List<Token> tokenizedExpression = new List<Token>();
-      Dictionary<string, double?> symbolTable = new Dictionary<string, double?>();
+      HashSet<string> symbols = new HashSet<string>();
       string numberBuffer = "";
       string letterBuffer = "";
       int parentheseCount = 0;  // Keeps track of closing and opening parenthesis match
@@ -82,7 +82,7 @@ namespace CAS.Core
           foreach (char ch in letterBuffer)
           {
             tokenizedExpression.Add(Token.Variable(ch.ToString()));
-            symbolTable[ch.ToString()] = null;
+            symbols.Add(ch.ToString());
           }
 
           letterBuffer = "";
@@ -123,7 +123,7 @@ namespace CAS.Core
           foreach (char ch in letterBuffer)
           {
             tokenizedExpression.Add(Token.Variable(ch.ToString()));
-            symbolTable[ch.ToString()] = null;
+            symbols.Add(ch.ToString());
           }
 
           letterBuffer = "";
@@ -142,7 +142,7 @@ namespace CAS.Core
           foreach (char ch in letterBuffer)
           {
             tokenizedExpression.Add(Token.Variable(ch.ToString()));
-            symbolTable[ch.ToString()] = null;
+            symbols.Add(ch.ToString());
           }
           
           letterBuffer = "";
@@ -167,14 +167,14 @@ namespace CAS.Core
       foreach (char ch in letterBuffer)
       {
         tokenizedExpression.Add(Token.Variable(ch.ToString()));
-        symbolTable[ch.ToString()] = null;
+        symbols.Add(ch.ToString());
       }
 
       if (parentheseCount != 0)
           throw new ArgumentException(
             "The given mathematical expression is not formatted correctly. Missing matchin parenthesis.");
 
-      return new StringTokenizerResult(tokenizedExpression, symbolTable);
+      return new StringTokenizerResult(tokenizedExpression, symbols);
     }
 
     #region Helper Functions
