@@ -11,6 +11,9 @@ namespace CAS.Core
   /// </summary>
   public readonly struct Token
   {
+    /// <summary>
+    /// The type of thus token.
+    /// </summary>
     public TokenType Type { get; }
 
     private Token(TokenType type)

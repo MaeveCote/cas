@@ -40,9 +40,10 @@ namespace CAS.Core
     /// <exception cref="ArgumentException">The given mathematical expression is not formatted correctly. Missing matchin parenthesis.</exception>
     /// <exception cref="ArgumentException">The given mathematical expression is not formatted correctly. Missing function argument or useless parentheses.</exception>
     /// <returns>A list of tokens that can be used to create an AST</returns>
-    public List<Token> Tokenize(string mathExpression)
+    public StringTokenizerResult Tokenize(string mathExpression)
     {
-      List<Token> result = new List<Token>();
+      List<Token> tokenizedExpression = new List<Token>();
+      Dictionary<string, double?> symbolTable = new Dictionary<string, double?>();
       string numberBuffer = "";
       string letterBuffer = "";
       int parentheseCount = 0;  // Keeps track of closing and opening parenthesis match
@@ -61,11 +62,11 @@ namespace CAS.Core
         {
           if (numberBuffer.Length != 0)
           {
-            result.Add(Token.Number(numberBuffer));
+            tokenizedExpression.Add(Token.Number(numberBuffer));
             numberBuffer = "";
             
             // Implicite multiplication
-            result.Add(Token.Operator("*"));
+            tokenizedExpression.Add(Token.Operator("*"));
           }
 
           letterBuffer += c;
@@ -74,35 +75,38 @@ namespace CAS.Core
         {
           if (numberBuffer.Length != 0)
           {
-            result.Add(Token.Number(numberBuffer));
+            tokenizedExpression.Add(Token.Number(numberBuffer));
             numberBuffer = "";
           }
 
           foreach (char ch in letterBuffer)
-            result.Add(Token.Variable(ch.ToString()));
+          {
+            tokenizedExpression.Add(Token.Variable(ch.ToString()));
+            symbolTable[ch.ToString()] = null;
+          }
 
           letterBuffer = "";
-          result.Add(Token.Operator(c.ToString()));
+          tokenizedExpression.Add(Token.Operator(c.ToString()));
         }
         else if (IsLeftParenthesis(c))
         {
           if (letterBuffer.Length != 0)
           {
-            result.Add(Token.Function(letterBuffer));
+            tokenizedExpression.Add(Token.Function(letterBuffer));
             letterBuffer = "";
           }
           else if (numberBuffer.Length != 0)
           {
-            result.Add(Token.Number(numberBuffer));
+            tokenizedExpression.Add(Token.Number(numberBuffer));
             numberBuffer = "";
 
             // Implicite multiplication
-            result.Add(Token.Operator("*"));
+            tokenizedExpression.Add(Token.Operator("*"));
           }
 
           parentheseCount++;
           lastParenthesis = true;
-          result.Add(Token.LeftParenthesis());
+          tokenizedExpression.Add(Token.LeftParenthesis());
         }
         else if (IsRightParenthesis(c))
         {
@@ -112,31 +116,37 @@ namespace CAS.Core
 
           if (numberBuffer.Length != 0)
           {
-            result.Add(Token.Number(numberBuffer));
+            tokenizedExpression.Add(Token.Number(numberBuffer));
             numberBuffer = "";
           }
 
           foreach (char ch in letterBuffer)
-            result.Add(Token.Variable(ch.ToString()));
+          {
+            tokenizedExpression.Add(Token.Variable(ch.ToString()));
+            symbolTable[ch.ToString()] = null;
+          }
 
           letterBuffer = "";
 
           parentheseCount--;
-          result.Add(Token.RightParenthesis());
+          tokenizedExpression.Add(Token.RightParenthesis());
         }
         else if (IsComma(c))
         {
           if (numberBuffer.Length != 0)
           {
-            result.Add(Token.Number(numberBuffer));
+            tokenizedExpression.Add(Token.Number(numberBuffer));
             numberBuffer = "";
           }
 
           foreach (char ch in letterBuffer)
-            result.Add(Token.Variable(ch.ToString()));
+          {
+            tokenizedExpression.Add(Token.Variable(ch.ToString()));
+            symbolTable[ch.ToString()] = null;
+          }
           
           letterBuffer = "";
-          result.Add(Token.FunctionArgumentSeparator());
+          tokenizedExpression.Add(Token.FunctionArgumentSeparator());
         }
         else
           throw new ArgumentException(
@@ -153,15 +163,18 @@ namespace CAS.Core
 
       // Dump out the rest of the buffers in result
       if (numberBuffer.Length != 0)
-        result.Add(Token.Number(numberBuffer));
+        tokenizedExpression.Add(Token.Number(numberBuffer));
       foreach (char ch in letterBuffer)
-        result.Add(Token.Variable(ch.ToString()));
+      {
+        tokenizedExpression.Add(Token.Variable(ch.ToString()));
+        symbolTable[ch.ToString()] = null;
+      }
 
       if (parentheseCount != 0)
           throw new ArgumentException(
             "The given mathematical expression is not formatted correctly. Missing matchin parenthesis.");
 
-      return result;
+      return new StringTokenizerResult(tokenizedExpression, symbolTable);
     }
 
     #region Helper Functions

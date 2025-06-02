@@ -10,7 +10,9 @@ namespace CAS.UT
 {
   public class ASTBuilderTest
   {
-
+    /// <summary>
+    /// Asserts that trees are equal by comparing nodes recursively.
+    /// </summary>
     private void AssertTreesEqual(ASTNode expected, ASTNode actual)
     {
       Assert.Equal(expected.Token.Type.stringValue, actual.Token.Type.stringValue);
