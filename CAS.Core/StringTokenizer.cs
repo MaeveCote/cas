@@ -10,6 +10,7 @@ namespace CAS.Core
   // Interesting to Add:
   //  -Support for symbol notation using the '\' character
   //  -Support for complex operations like derivatives, integrals, summations, etc...
+  //  -Find a way to support arbitrary number of arguments in function.
 
   /// <summary>
   /// Tokenizes a mathematical expression before converting it to an abstract synthax tree (AST).
@@ -30,10 +31,10 @@ namespace CAS.Core
     /// </summary>
     /// <param name="mathExpression">The expression to tokenize</param>
     /// <remarks>This tokenizer makes some assumptions:
-    /// 1-The spaces are discarded, so the expression can contain 0 or more whitespaces between token before tokenizing.
-    /// 2-Function arguments must be in parentheses.
-    /// 3-Letters before a parenthesis will be assumed to be a function, not implicit multiplication.
-    /// 4-Implicit multiplication will only happen between NUMBER - VARIABLE and NUMBER - FUNCTION
+    ///   1-The spaces are discarded, so the expression can contain 0 or more whitespaces between token before tokenizing.
+    ///   2-Function arguments must be in parentheses.
+    ///   3-Letters before a parenthesis will be assumed to be a function, not implicit multiplication.
+    ///   4-Implicit multiplication will only happen between NUMBER - VARIABLE and NUMBER - FUNCTION
     /// </remarks>
     /// <exception cref="ArgumentException">The given mathematical expression is not formatted correctly. There is an undefined character.</exception>
     /// <exception cref="ArgumentException">The given mathematical expression is not formatted correctly. Missing matchin parenthesis.</exception>
@@ -121,7 +122,7 @@ namespace CAS.Core
           letterBuffer = "";
 
           parentheseCount--;
-          result.Add(Token.RightParenthese());
+          result.Add(Token.RightParenthesis());
         }
         else if (IsComma(c))
         {
@@ -135,7 +136,7 @@ namespace CAS.Core
             result.Add(Token.Variable(ch.ToString()));
           
           letterBuffer = "";
-          result.Add(Token.FunctionArgumentSeparator(c.ToString()));
+          result.Add(Token.FunctionArgumentSeparator());
         }
         else
           throw new ArgumentException(

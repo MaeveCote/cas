@@ -6,50 +6,29 @@ using System.Threading.Tasks;
 
 namespace CAS.Core
 {
-  public enum TokenType
-  {
-    Number,
-    Variable,
-    Function,
-    FunctionArgumentSeparator,
-    Operator,
-    LeftParenthesis,
-    RightParenthesis,
-  }
-
   /// <summary>
   /// Holds token value for elements of a mathematical equation.
   /// </summary>
   public readonly struct Token
   {
     public TokenType Type { get; }
-    
-    // Only one value can be held at a time.
-    public double? NumberValue { get; }
-    public string? StringValue { get; }
 
-    private Token(TokenType type, double? numberValue, string? stringValue)
+    private Token(TokenType type)
     {
       Type = type;
-      NumberValue = numberValue;
-      StringValue = stringValue;
     }
 
-    public static Token Number(string value) => new(TokenType.Number, double.Parse(value), null);
-    public static Token Variable(string value) => new(TokenType.Variable, null, value);
-    public static Token Function(string value) => new(TokenType.Function, null, value);
-    public static Token FunctionArgumentSeparator(string value) => new(TokenType.FunctionArgumentSeparator, null, value);
-    public static Token Operator(string value) => new(TokenType.Operator, null, value);
-    public static Token LeftParenthesis() => new(TokenType.LeftParenthesis, null, "(");
-    public static Token RightParenthese() => new(TokenType.RightParenthesis, null, ")");
+    public static Token Number(string value) => new(new Number(value));
+    public static Token Variable(string value) => new(new Variable(value));
+    public static Token Function(string value) => new(new Function(value));
+    public static Token FunctionArgumentSeparator() => new(new FunctionArgumentSeparator());
+    public static Token Operator(string value) => new(new Operator(value));
+    public static Token LeftParenthesis() => new(new LeftParenthesis()); 
+    public static Token RightParenthesis() => new(new RightParenthesis());
 
     public override string ToString()
     {
-      return Type switch
-      {
-        TokenType.Number => $"Number({NumberValue})",
-        _ => $"{Type}('{StringValue}')"
-      };
+      return Type.ToString();
     }
   }
 }
