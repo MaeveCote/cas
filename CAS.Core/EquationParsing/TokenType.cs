@@ -5,7 +5,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CAS.Core
+namespace CAS.Core.EquationParsing
 {
   public class TokenType
   {
@@ -83,17 +83,12 @@ namespace CAS.Core
 
   public class Function : Operator
   {
-    public int numberOfArguments { get; }
+    public int numberOfArguments { get; set; }
 
     public Function(string _stringValue) : base(_stringValue)
     {
       priority = 4;
       numberOfArguments = 1;
-
-      // Parse the value to find if the function has more arguments
-      if (stringValue == "mod" || stringValue == "nthroot" || stringValue == "gcd" || stringValue == "lcm" || 
-        stringValue == "diff" || stringValue == "max" || stringValue == "min" || stringValue == "log")
-        numberOfArguments = 2;
     }
 
     public Function(string _stringValue, int _numberOfArguments) : base(_stringValue)

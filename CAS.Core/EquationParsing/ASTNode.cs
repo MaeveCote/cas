@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CAS.Core
+namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// A node to store data in an abstract syntax tree.

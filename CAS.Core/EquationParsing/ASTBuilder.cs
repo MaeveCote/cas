@@ -5,15 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CAS.Core
+namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// Builds an Abstract Syntax Tree from a list of tokens in infix notation.
   /// </summary>
-  public class ASTBuilder
+  public static class ASTBuilder
   {
-    public ASTBuilder() { }
-
     /// <summary>
     /// Uses the Shunting Yard algorithm to convert a mathematical expression int infix notation into an AST.
     /// </summary>
@@ -22,7 +20,7 @@ namespace CAS.Core
     /// <param name="expression">The tokenized expression.</param>
     /// <exception cref="ArgumentException">The output should only have one element left (the root).</exception>
     /// <returns>The root of the AST</returns>
-    public ASTNode ParseInfixToAST(List<Token> expression)
+    public static ASTNode ParseInfixToAST(List<Token> expression)
     {
       Stack<ASTNode> output = new Stack<ASTNode>();
       Stack<Token> operators = new Stack<Token>();
@@ -43,8 +41,8 @@ namespace CAS.Core
             // Prevent comparison with parenthesis
             if (op2.Type is LeftParenthesis)
               break;
-            int comparison = op1.ComparePriority(((Operator)op2.Type));
-            if (comparison < 0 || (!op1.isRightAssociative && comparison == 0))
+            int comparison = op1.ComparePriority((Operator)op2.Type);
+            if (comparison < 0 || !op1.isRightAssociative && comparison == 0)
             {
               operators.Pop();
               AddNode(output, op2);
@@ -90,18 +88,7 @@ namespace CAS.Core
       return output.Pop();
     }
 
-    /// <summary>
-    /// Uses the Shunting Yard algorithm to convert a mathematical expression in infix notation to RPN (postfix) notation.
-    /// </summary>
-    /// <remarks>See the <a href="https://en.wikipedia.org/wiki/Shunting_yard_algorithm">Shunting Yard Algorithm</a></remarks>
-    /// <param name="expression">The tokenized expression.</param>
-    /// <returns>The expression in RPN (postfix) notation.</returns>
-    public List<Token> ParseInfixToRPN(List<Token> expression)
-    {
-      return null;
-    }
-
-    private void AddNode(Stack<ASTNode> output, Token op)
+    private static void AddNode(Stack<ASTNode> output, Token op)
     {
       var rightChild = output.Pop();
       var leftChild = output.Pop();
