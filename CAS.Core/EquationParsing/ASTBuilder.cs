@@ -10,10 +10,8 @@ namespace CAS.Core.EquationParsing
   /// <summary>
   /// Builds an Abstract Syntax Tree from a list of tokens in infix notation.
   /// </summary>
-  public class ASTBuilder
+  public static class ASTBuilder
   {
-    public ASTBuilder() { }
-
     /// <summary>
     /// Uses the Shunting Yard algorithm to convert a mathematical expression int infix notation into an AST.
     /// </summary>
@@ -22,7 +20,7 @@ namespace CAS.Core.EquationParsing
     /// <param name="expression">The tokenized expression.</param>
     /// <exception cref="ArgumentException">The output should only have one element left (the root).</exception>
     /// <returns>The root of the AST</returns>
-    public ASTNode ParseInfixToAST(List<Token> expression)
+    public static ASTNode ParseInfixToAST(List<Token> expression)
     {
       Stack<ASTNode> output = new Stack<ASTNode>();
       Stack<Token> operators = new Stack<Token>();
@@ -90,18 +88,7 @@ namespace CAS.Core.EquationParsing
       return output.Pop();
     }
 
-    /// <summary>
-    /// Uses the Shunting Yard algorithm to convert a mathematical expression in infix notation to RPN (postfix) notation.
-    /// </summary>
-    /// <remarks>See the <a href="https://en.wikipedia.org/wiki/Shunting_yard_algorithm">Shunting Yard Algorithm</a></remarks>
-    /// <param name="expression">The tokenized expression.</param>
-    /// <returns>The expression in RPN (postfix) notation.</returns>
-    public List<Token> ParseInfixToRPN(List<Token> expression)
-    {
-      return null;
-    }
-
-    private void AddNode(Stack<ASTNode> output, Token op)
+    private static void AddNode(Stack<ASTNode> output, Token op)
     {
       var rightChild = output.Pop();
       var leftChild = output.Pop();

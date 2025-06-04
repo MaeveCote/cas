@@ -43,11 +43,9 @@ namespace CAS.UT
     [Fact]
     public void Arithmetic()
     {
-      StringTokenizer tokenizer = new StringTokenizer();
-
-      var result1 = tokenizer.Tokenize("5 - 2 + 3");
-      var result2 = tokenizer.Tokenize("6 * 3 / 2");
-      var result3 = tokenizer.Tokenize("(1 + 2) * 3");
+      var result1 = StringTokenizer.Tokenize("5 - 2 + 3");
+      var result2 = StringTokenizer.Tokenize("6 * 3 / 2");
+      var result3 = StringTokenizer.Tokenize("(1 + 2) * 3");
 
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
@@ -65,11 +63,9 @@ namespace CAS.UT
     [Fact]
     public void Polynomials()
     {
-      StringTokenizer tokenizer = new StringTokenizer();
-
-      var result1 = tokenizer.Tokenize("x^2 + 2x + 1");
-      var result2 = tokenizer.Tokenize("a^3 + b^2 + c");
-      var result3 = tokenizer.Tokenize("3x^2 - 4x + 5");
+      var result1 = StringTokenizer.Tokenize("x^2 + 2x + 1");
+      var result2 = StringTokenizer.Tokenize("a^3 + b^2 + c");
+      var result3 = StringTokenizer.Tokenize("3x^2 - 4x + 5");
 
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
@@ -90,11 +86,9 @@ namespace CAS.UT
     [Fact]
     public void Functions()
     {
-      StringTokenizer tokenizer = new StringTokenizer();
-
-      var result1 = tokenizer.Tokenize("sin(x)");
-      var result2 = tokenizer.Tokenize("log(10, 100)");
-      var result3 = tokenizer.Tokenize("sqrt(4 + (2 * x))");
+      var result1 = StringTokenizer.Tokenize("sin(x)");
+      var result2 = StringTokenizer.Tokenize("log(10, 100)");
+      var result3 = StringTokenizer.Tokenize("sqrt(4 + (2 * x))");
 
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
@@ -115,11 +109,9 @@ namespace CAS.UT
     [Fact]
     public void ImplicitMultiplication()
     {
-      StringTokenizer tokenizer = new StringTokenizer();
-
-      var result1 = tokenizer.Tokenize("3x");
-      var result2 = tokenizer.Tokenize("2sin(x)");
-      var result3 = tokenizer.Tokenize("4(b + c)");
+      var result1 = StringTokenizer.Tokenize("3x");
+      var result2 = StringTokenizer.Tokenize("2sin(x)");
+      var result3 = StringTokenizer.Tokenize("4(b + c)");
 
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
@@ -140,11 +132,9 @@ namespace CAS.UT
     [Fact]
     public void NestedFunctions()
     {
-      StringTokenizer tokenizer = new StringTokenizer();
-
-      var result1 = tokenizer.Tokenize("f(g(x))");
-      var result2 = tokenizer.Tokenize("h(f(g(x)))");
-      var result3 = tokenizer.Tokenize("f(g(x) + h(y))");
+      var result1 = StringTokenizer.Tokenize("f(g(x))");
+      var result2 = StringTokenizer.Tokenize("h(f(g(x)))");
+      var result3 = StringTokenizer.Tokenize("f(g(x) + h(y))");
 
       string s1 = TokenListToTestString(result1.TokenizedExpression);
       string s2 = TokenListToTestString(result2.TokenizedExpression);
@@ -164,11 +154,10 @@ namespace CAS.UT
     [Fact]
     public void InvalidExpressions()
     {
-      StringTokenizer tokenizer = new StringTokenizer();
-      Assert.Throws<ArgumentException>(() => tokenizer.Tokenize("(2 + 3"));           // Unbalanced parentheses
-      Assert.Throws<ArgumentException>(() => tokenizer.Tokenize("f()"));              // Empty function call
-      Assert.Throws<ArgumentException>(() => tokenizer.Tokenize("3 + @"));            // Invalid character
-      Assert.Throws<ArgumentException>(() => tokenizer.Tokenize("3 - 8 + () - 3x"));  // Useless parentheses
+      Assert.Throws<ArgumentException>(() => StringTokenizer.Tokenize("(2 + 3"));           // Unbalanced parentheses
+      Assert.Throws<ArgumentException>(() => StringTokenizer.Tokenize("f()"));              // Empty function call
+      Assert.Throws<ArgumentException>(() => StringTokenizer.Tokenize("3 + @"));            // Invalid character
+      Assert.Throws<ArgumentException>(() => StringTokenizer.Tokenize("3 - 8 + () - 3x"));  // Useless parentheses
     }
   }
 }

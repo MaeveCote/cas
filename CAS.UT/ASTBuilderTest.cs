@@ -86,11 +86,9 @@ namespace CAS.UT
           new ASTNode(Token.Number("3"), new List<ASTNode>())
       });
 
-      ASTBuilder builder = new ASTBuilder();
-
-      var result1 = builder.ParseInfixToAST(list1);
-      var result2 = builder.ParseInfixToAST(list2);
-      var result3 = builder.ParseInfixToAST(list3);
+      var result1 = ASTBuilder.ParseInfixToAST(list1);
+      var result2 = ASTBuilder.ParseInfixToAST(list2);
+      var result3 = ASTBuilder.ParseInfixToAST(list3);
 
       AssertTreesEqual(expected1, result1);
       AssertTreesEqual(expected2, result2);
@@ -199,11 +197,9 @@ namespace CAS.UT
           new ASTNode(Token.Number("5"), new List<ASTNode>())
       });
 
-      ASTBuilder builder = new ASTBuilder();
-
-      var result1 = builder.ParseInfixToAST(list1);
-      var result2 = builder.ParseInfixToAST(list2);
-      var result3 = builder.ParseInfixToAST(list3);
+      var result1 = ASTBuilder.ParseInfixToAST(list1);
+      var result2 = ASTBuilder.ParseInfixToAST(list2);
+      var result3 = ASTBuilder.ParseInfixToAST(list3);
 
       AssertTreesEqual(expected1, result1);
       AssertTreesEqual(expected2, result2);
@@ -224,7 +220,7 @@ namespace CAS.UT
 
       List<Token> list2 = new List<Token>
       {
-        Token.Function("log"),
+        Token.Function("log", 2),
         Token.LeftParenthesis(),
         Token.Number("10"),
         Token.FunctionArgumentSeparator(),
@@ -269,12 +265,9 @@ namespace CAS.UT
               })
           })
       });
-
-      ASTBuilder builder = new ASTBuilder();
-
-      var result1 = builder.ParseInfixToAST(list1);
-      var result2 = builder.ParseInfixToAST(list2);
-      var result3 = builder.ParseInfixToAST(list3);
+      var result1 = ASTBuilder.ParseInfixToAST(list1);
+      var result2 = ASTBuilder.ParseInfixToAST(list2);
+      var result3 = ASTBuilder.ParseInfixToAST(list3);
 
       AssertTreesEqual(expected1, result1);
       AssertTreesEqual(expected2, result2);
@@ -336,12 +329,9 @@ namespace CAS.UT
               new ASTNode(Token.Variable("c"), new List<ASTNode>())
           })
       });
-
-      ASTBuilder builder = new ASTBuilder();
-
-      var result1 = builder.ParseInfixToAST(list1);
-      var result2 = builder.ParseInfixToAST(list2);
-      var result3 = builder.ParseInfixToAST(list3);
+      var result1 = ASTBuilder.ParseInfixToAST(list1);
+      var result2 = ASTBuilder.ParseInfixToAST(list2);
+      var result3 = ASTBuilder.ParseInfixToAST(list3);
 
       AssertTreesEqual(expected1, result1);
       AssertTreesEqual(expected2, result2);
@@ -426,11 +416,9 @@ namespace CAS.UT
           })
       });
 
-      ASTBuilder builder = new ASTBuilder();
-
-      var result1 = builder.ParseInfixToAST(list1);
-      var result2 = builder.ParseInfixToAST(list2);
-      var result3 = builder.ParseInfixToAST(list3);
+      var result1 = ASTBuilder.ParseInfixToAST(list1);
+      var result2 = ASTBuilder.ParseInfixToAST(list2);
+      var result3 = ASTBuilder.ParseInfixToAST(list3);
 
       AssertTreesEqual(expected1, result1);
       AssertTreesEqual(expected2, result2);
