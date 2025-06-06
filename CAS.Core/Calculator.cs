@@ -84,16 +84,17 @@ namespace CAS.Core
 
       if (root.Token.Type is Operator)
       {
-        double left = Evaluate(root.Children[0], symbolTable, customFunctionTable);
-        double right = Evaluate(root.Children[1], symbolTable, customFunctionTable);
+        List<double> resultValues = new List<double>();
+        foreach (ASTNode node in root.Children)
+          resultValues.Add(Evaluate(node, symbolTable, customFunctionTable));
 
         return root.Token.Type.stringValue switch
         {
-          "+" => left + right,
-          "-" => left - right,
-          "*" => left * right,
-          "/" => left / right,
-          "^" => Math.Pow(left, right),
+          "+" => ComputeAddition(resultValues),
+          "-" => ComputeSubstraction(resultValues),
+          "*" => ComputeMultiplication(resultValues),
+          "/" => ComputeDivision(resultValues),
+          "^" => ComputePower(resultValues),
           _ => throw new InvalidOperationException("Unknown operator")
         };
       }
@@ -101,6 +102,7 @@ namespace CAS.Core
       throw new InvalidOperationException("Unsupported token type, the node is not evaluable.");
     }
 
+    #region Helper Functions
     private static List<double> EvaluateArgs(List<ASTNode> args,  Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)
     {
 
@@ -110,5 +112,46 @@ namespace CAS.Core
 
       return evalArgs;
     }
+    private static double ComputeAddition(List<double> resultValues)
+    {
+      double result = resultValues[0];
+
+      for (int i = 1; i < resultValues.Count(); i++)
+        result += resultValues[i];
+      return result;
+    }
+    private static double ComputeSubstraction(List<double> resultValues)
+    {
+      double result = resultValues[0];
+
+      for (int i = 1; i < resultValues.Count(); i++)
+        result -= resultValues[i];
+      return result;
+    }
+    private static double ComputeMultiplication(List<double> resultValues)
+    {
+      double result = resultValues[0];
+
+      for (int i = 1; i < resultValues.Count(); i++)
+        result *= resultValues[i];
+      return result;
+    }
+    private static double ComputeDivision(List<double> resultValues)
+    {
+      double result = resultValues[0];
+
+      for (int i = 1; i < resultValues.Count(); i++)
+        result /= resultValues[i];
+      return result;
+    }
+    private static double ComputePower(List<double> resultValues)
+    {
+      double result = resultValues[resultValues.Count() - 1];
+
+      for (int i = resultValues.Count() - 2; i >= 0; i--)
+        result = Math.Pow(resultValues[i], result);
+      return result;
+    }
+    #endregion
   }
 }
