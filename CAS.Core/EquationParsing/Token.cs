@@ -22,6 +22,7 @@ namespace CAS.Core.EquationParsing
     }
 
     public static Token Number(string value) => new(new Number(value));
+    public static Token Fraction() => new(new Fraction());
     public static Token Variable(string value) => new(new Variable(value));
     public static Token Function(string value) => new(new Function(value));
     public static Token Function(string value, int argsCount) => new(new Function(value, argsCount));

@@ -36,6 +36,16 @@ namespace CAS.Core.EquationParsing
     }
   }
 
+  public class Fraction : TokenType
+  {
+    public Fraction() : base("Frac") { }
+
+    public override string ToString()
+    {
+      return $"Fraction('Frac')";
+    }
+  }
+
   public class Variable : TokenType
   {
     public Variable(string _stringValue) : base(_stringValue) { }

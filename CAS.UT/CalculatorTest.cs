@@ -44,13 +44,35 @@ namespace CAS.UT
           new ASTNode(Token.Number("3"), new List<ASTNode>())
       });
 
+      var fractions = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+          new ASTNode(Token.Number("3"), new List<ASTNode>()),
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+              new ASTNode(Token.Number("6"), new List<ASTNode>()),
+              new ASTNode(Token.Number("7"), new List<ASTNode>())
+          }),
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+              new ASTNode(Token.Number("2"), new List<ASTNode>()),
+              new ASTNode(Token.Number("3"), new List<ASTNode>())
+          }),
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+              new ASTNode(Token.Number("4"), new List<ASTNode>()),
+              new ASTNode(Token.Number("5"), new List<ASTNode>())
+          })
+      });
+
       var result1 = Calculator.Evaluate(equation1);
       var result2 = Calculator.Evaluate(equation2);
       var result3 = Calculator.Evaluate(equation3);
+      var resultFrac = Calculator.Evaluate(fractions);
 
       Assert.Equal(6, result1, 0.001);
       Assert.Equal(9, result2, 0.001);
       Assert.Equal(9, result3, 0.001);
+      Assert.Equal(5.3238, resultFrac, 0.01);
     }
 
     [Fact]

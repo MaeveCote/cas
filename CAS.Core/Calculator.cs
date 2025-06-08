@@ -62,6 +62,14 @@ namespace CAS.Core
       if (root.Token.Type is Number)
         return double.Parse(root.Token.Type.stringValue);
 
+      if (root.Token.Type is Fraction)
+      {
+        double num = double.Parse(root.Children[0].Token.Type.stringValue);
+        double denum = double.Parse(root.Children[1].Token.Type.stringValue);
+
+        return num / denum;
+      }
+
       if (root.Token.Type is Variable)
         return symbolTable[root.Token.Type.stringValue];
 
