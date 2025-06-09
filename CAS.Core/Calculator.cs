@@ -109,6 +109,34 @@ namespace CAS.Core
 
       throw new InvalidOperationException("Unsupported token type, the node is not evaluable.");
     }
+    public static int Remainder(int a, int b)
+    {
+      return ((a % b) + Math.Abs(b)) % Math.Abs(b);
+    }
+
+    public static int Quotient(int a, int b)
+    {
+      return (a - Remainder(a, b)) / b;
+    }
+
+    /// <summary>
+    /// Computes the Greatest Common Divisor of a and b using Euclid's algorithm.
+    /// </summary>
+    public static int GCD(int a, int b)
+    {
+      int A = a;
+      int B = b;
+      int R;
+
+      while (B != 0)
+      {
+        R = Remainder(A, B);
+        A = B;
+        B = R;
+      }
+
+      return Math.Abs(A);
+    }
 
     #region Helper Functions
     private static List<double> EvaluateArgs(List<ASTNode> args,  Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)

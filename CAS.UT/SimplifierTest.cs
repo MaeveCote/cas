@@ -128,5 +128,103 @@ namespace CAS.UT
       Assert.Equal(49.481, result2, 0.01);
       Assert.Equal(5.3238, result3, 0.01);
     }
+
+    [Fact]
+    public void SimplifyRationalNumber()
+    {
+      var frac1 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("5"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("3"), new List<ASTNode>())
+      });
+
+      var frac2 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("15"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("3"), new List<ASTNode>())
+      });
+
+      var frac3 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("14"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("1"), new List<ASTNode>())
+      });
+
+      var frac4 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("2"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("0"), new List<ASTNode>())
+      });
+
+      var frac5 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("-16"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("4"), new List<ASTNode>())
+      });
+
+      var frac6 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("-4"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("16"), new List<ASTNode>())
+      });
+
+      var frac7 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("4"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("-16"), new List<ASTNode>())
+      });
+
+      var frac8 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Number("0.2"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("2"), new List<ASTNode>())
+      });
+
+      var frac9 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("0"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("2"), new List<ASTNode>())
+      });
+      var frac10 = new ASTNode(Token.Integer("16"), new List<ASTNode>());
+
+      var simplified1 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("5"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("3"), new List<ASTNode>())
+      });
+      var simplified2 = new ASTNode(Token.Integer("5"), new List<ASTNode>());
+      var simplified3 = new ASTNode(Token.Integer("14"), new List<ASTNode>());
+      var simplified4 = new ASTNode(Token.Undefined(), new List<ASTNode>());
+      var simplified5 = new ASTNode(Token.Integer("-4"), new List<ASTNode>());
+      var simplified6 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("-1"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("4"), new List<ASTNode>())
+      });
+      var simplified7 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Integer("-1"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("4"), new List<ASTNode>())
+      });
+      var simplified8 = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+          new ASTNode(Token.Number("0.2"), new List<ASTNode>()),
+          new ASTNode(Token.Integer("2"), new List<ASTNode>())
+      });
+      var simplified9 = new ASTNode(Token.Integer("0"), new List<ASTNode>());
+      var simplified10 = new ASTNode(Token.Integer("16"), new List<ASTNode>());
+
+      Simplifier simplifier = new Simplifier();
+      Assert.True(simplifier.SimplifyRationalNumber(frac1) == simplified1);
+      Assert.True(simplifier.SimplifyRationalNumber(frac2) == simplified2);
+      Assert.True(simplifier.SimplifyRationalNumber(frac3) == simplified3);
+      Assert.True(simplifier.SimplifyRationalNumber(frac4) == simplified4);
+      Assert.True(simplifier.SimplifyRationalNumber(frac5) == simplified5);
+      Assert.True(simplifier.SimplifyRationalNumber(frac6) == simplified6);
+      Assert.True(simplifier.SimplifyRationalNumber(frac7) == simplified7);
+      Assert.True(simplifier.SimplifyRationalNumber(frac8) == simplified8);
+      Assert.True(simplifier.SimplifyRationalNumber(frac9) == simplified9);
+      Assert.True(simplifier.SimplifyRationalNumber(frac10) == simplified10);
+    }
   }
 }
