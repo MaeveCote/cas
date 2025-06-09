@@ -144,7 +144,12 @@ namespace CAS.Core
     
     private ASTNode SimplifyRNE_Rec(ASTNode input)
     {
+      
+
+
       return null;
     }
   }
 }
+
+
