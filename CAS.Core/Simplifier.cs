@@ -121,7 +121,6 @@ namespace CAS.Core
       throw new ArgumentException("The input is not a rationnal number.");
     }
 
-
     /// <summary>
     /// Simplifies a Rational Number Expression (RNE) into an integer or an irreducible fraction.
     /// </summary>
@@ -137,17 +136,78 @@ namespace CAS.Core
       return SimplifyRationalNumber(result);
     }
 
-    public static bool IsInteger(Number num)
+    private static bool IsInteger(Number num)
     {
       return Math.Abs(num.value % 1) < EPSILON;
     }
     
     private ASTNode SimplifyRNE_Rec(ASTNode input)
     {
-      
+      if (input.Token.Type is IntegerNum)
+        return input;
+      else if (input.Token.Type is Fraction)
+      {
+        var frac = Calculator.GetNumAndDenum(input);
+        if (frac[1] == 0)
+          return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return input;
+      }
+      else if (input.Token.Type is Operator op)
+      {
+        if (op.stringValue == "^")
+        {
+          var simplifiedBase = SimplifyRNE_Rec(input.OperandAt(0));
+          if (simplifiedBase.Token.Type is Undefined)
+            return new ASTNode(Token.Undefined(), new List<ASTNode>());
+          return Calculator.EvaluatePowerRationnal(simplifiedBase, input.OperandAt(1));
+        }
 
+        List<ASTNode> simplifiedNodes = new List<ASTNode>();
+        foreach (ASTNode child in input.Children)
+        {
+          var simplifiedChild = SimplifyRNE_Rec(child);
+          if (simplifiedChild.Token.Type is Undefined)
+            return new ASTNode(Token.Undefined(), new List<ASTNode>());
+          simplifiedNodes.Add(SimplifyRNE_Rec(child));
+        }
 
-      return null;
+        if (op.stringValue == "+")
+        {
+          ASTNode result = simplifiedNodes[0];
+          for (int i = 1; i < simplifiedNodes.Count(); i++)
+            result = Calculator.EvaluateSumRationnal(result, simplifiedNodes[i]);
+
+          return result;
+        }
+        else if (op.stringValue == "-")
+        {
+          ASTNode result = simplifiedNodes[0];
+          for (int i = 1; i < simplifiedNodes.Count(); i++)
+            result = Calculator.EvaluateDiffRationnal(result, simplifiedNodes[i]);
+
+          return result;
+        }
+        else if (op.stringValue == "*")
+        {
+          ASTNode result = simplifiedNodes[0];
+          for (int i = 1; i < simplifiedNodes.Count(); i++)
+            result = Calculator.EvaluateProductRationnal(result, simplifiedNodes[i]);
+
+          return result;
+        }
+        else if (op.stringValue == "/")
+        {
+          ASTNode result = simplifiedNodes[0];
+          for (int i = 1; i < simplifiedNodes.Count(); i++)
+            result = Calculator.EvaluateQuotientRationnal(result, simplifiedNodes[i]);
+
+          return result;
+        }
+
+        throw new ArgumentException("Unknow operator : '" + op.stringValue + "'");
+      }
+
+      throw new ArgumentException("The input is not a RNE.");
     }
   }
 }

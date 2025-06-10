@@ -11,6 +11,22 @@ namespace CAS.UT
 {
   public class SimplifierTest
   {
+    private ASTNode Int(int value) =>
+        new ASTNode(Token.Integer(value.ToString()), new List<ASTNode>());
+
+    private ASTNode Frac(int num, int den) =>
+      new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+      Int(num),
+      Int(den)
+      });
+
+    private ASTNode Op(string symbol, params ASTNode[] operands) =>
+      new ASTNode(Token.Operator(symbol), new List<ASTNode>(operands));
+
+    private ASTNode Decimal(string val) =>
+      new ASTNode(Token.Number(val), new List<ASTNode>());
+
     [Fact]
     public void FormatTree()
     {
@@ -225,6 +241,63 @@ namespace CAS.UT
       Assert.True(simplifier.SimplifyRationalNumber(frac8) == simplified8);
       Assert.True(simplifier.SimplifyRationalNumber(frac9) == simplified9);
       Assert.True(simplifier.SimplifyRationalNumber(frac10) == simplified10);
+    }
+    [Fact]
+    public void SimplifyRNE_SimpleAddition()
+    {
+      var input = Op("+", Int(2), Int(3)); // 2 + 3
+      var simplifier = new Simplifier();
+      var result = simplifier.SimplifyRNE(input);
+
+      Assert.Equal("5", result.Token.Type.stringValue); // Should simplify to 5
+    }
+
+    [Fact]
+    public void SimplifyRNE_MediumNestedExpression()
+    {
+      // (2/3 + 3/4) * 2
+      var frac1 = Frac(2, 3);
+      var frac2 = Frac(3, 4);
+      var sum = Op("+", frac1, frac2);
+      var input = Op("*", sum, Int(2));
+
+      var simplifier = new Simplifier();
+      var result = simplifier.SimplifyRNE(input);
+
+      // Expected: (2/3 + 3/4) = 17/12, then *2 = 34/12 = 17/6
+      Assert.Equal("17", result.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("6", result.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void SimplifyRNE_HardDeepExpression()
+    {
+      // ((1 + 1/2) ^ 2) / (3 - 1/3)
+      var half = Frac(1, 2);
+      var one = Int(1);
+      var two = Int(2);
+      var onePlusHalf = Op("+", one, half);             // 1 + 1/2
+      var pow = Op("^", onePlusHalf, two);              // (1 + 1/2)^2
+      var three = Int(3);
+      var third = Frac(1, 3);
+      var denom = Op("-", three, third);                // 3 - 1/3
+      var input = Op("/", pow, denom);                  // full expression
+
+      var simplifier = new Simplifier();
+      var result = simplifier.SimplifyRNE(input);
+
+      // (3/2)^2 = 9/4, 3 - 1/3 = 8/3, 9/4 ÷ 8/3 = 27/32
+      Assert.Equal("27", result.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("32", result.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void SimplifyRNE_InvalidDecimalInput_Throws()
+    {
+      var invalid = Decimal("2.5");
+      var simplifier = new Simplifier();
+
+      Assert.Throws<ArgumentException>(() => simplifier.SimplifyRNE(invalid));
     }
   }
 }

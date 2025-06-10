@@ -312,6 +312,29 @@ namespace CAS.Core
 
     }
 
+    /// <summary>
+    /// Converts a rational number node to an array numerator and denumerator.
+    /// </summary>
+    /// <returns>Int array of [numerator, denumerator]</returns>
+    /// <exception cref="ArgumentException">The given node is not a rational number</exception>
+    public static int[] GetNumAndDenum(ASTNode node)
+    {
+      int[] frac = new int[2];
+      if (node.Token.Type is IntegerNum nodeInt)
+      {
+        frac[0] = nodeInt.intVal;
+        frac[1] = 1;
+      }
+      else if (node.Token.Type is Fraction)
+      {
+        frac[0] = ((IntegerNum)node.OperandAt(0).Token.Type).intVal;
+        frac[1] = ((IntegerNum)node.OperandAt(1).Token.Type).intVal;
+      }
+      else
+        throw new ArgumentException("The 'node' should be a rationnal number");
+
+      return frac;
+    }
     #region Helper Functions
     private static List<double> EvaluateArgs(List<ASTNode> args,  Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)
     {
@@ -361,25 +384,6 @@ namespace CAS.Core
       for (int i = resultValues.Count() - 2; i >= 0; i--)
         result = Math.Pow(resultValues[i], result);
       return result;
-    }
-    
-    private static int[] GetNumAndDenum(ASTNode node)
-    {
-      int[] frac = new int[2];
-      if (node.Token.Type is IntegerNum nodeInt)
-      {
-        frac[0] = nodeInt.intVal;
-        frac[1] = 1;
-      }
-      else if (node.Token.Type is Fraction)
-      {
-        frac[0] = ((IntegerNum)node.OperandAt(0).Token.Type).intVal;
-        frac[1] = ((IntegerNum)node.OperandAt(1).Token.Type).intVal;
-      }
-      else
-        throw new ArgumentException("The 'leftNode' should be a rationnal number");
-
-      return frac;
     }
     
     private static int[] EvaluatePowerRationnalRec(int[] baseFrac, int exponent)
