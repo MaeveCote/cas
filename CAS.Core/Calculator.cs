@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Dynamic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -62,6 +64,14 @@ namespace CAS.Core
       if (root.Token.Type is Number)
         return double.Parse(root.Token.Type.stringValue);
 
+      if (root.Token.Type is Fraction)
+      {
+        double num = double.Parse(root.Children[0].Token.Type.stringValue);
+        double denum = double.Parse(root.Children[1].Token.Type.stringValue);
+
+        return num / denum;
+      }
+
       if (root.Token.Type is Variable)
         return symbolTable[root.Token.Type.stringValue];
 
@@ -101,7 +111,230 @@ namespace CAS.Core
 
       throw new InvalidOperationException("Unsupported token type, the node is not evaluable.");
     }
+    public static int Remainder(int a, int b)
+    {
+      return ((a % b) + Math.Abs(b)) % Math.Abs(b);
+    }
 
+    public static int Quotient(int a, int b)
+    {
+      return (a - Remainder(a, b)) / b;
+    }
+
+    /// <summary>
+    /// Computes the Greatest Common Divisor of a and b using Euclid's algorithm.
+    /// </summary>
+    public static int GCD(int a, int b)
+    {
+      int A = a;
+      int B = b;
+      int R;
+
+      while (B != 0)
+      {
+        R = Remainder(A, B);
+        A = B;
+        B = R;
+      }
+
+      return Math.Abs(A);
+    }
+
+    /// <summary>
+    /// Evaluates the product of two rationnal numbers.
+    /// </summary>
+    /// <returns>A rationnal number</returns>
+    public static ASTNode EvaluateProductRationnal(ASTNode leftNode, ASTNode rightNode)
+    {
+      int[] leftFrac = GetNumAndDenum(leftNode);
+      int[] rightFrac = GetNumAndDenum(rightNode);
+
+      int resultNum = (leftFrac[0] * rightFrac[0]);
+      int resultDenum = (leftFrac[1] * rightFrac[1]);
+
+      if (resultDenum == 0)
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+      else if (resultDenum == 1)
+        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+
+      return new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
+        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+      });
+    }
+
+    /// <summary>
+    /// Evaluates the quotient of two rationnal numbers.
+    /// </summary>
+    /// <returns>A rationnal number</returns>
+    public static ASTNode EvaluateQuotientRationnal(ASTNode leftNode, ASTNode rightNode)
+    {
+      int[] leftFrac = GetNumAndDenum(leftNode);
+      int[] rightFrac = GetNumAndDenum(rightNode);
+
+      int resultNum = (leftFrac[0] * rightFrac[1]);
+      int resultDenum = (leftFrac[1] * rightFrac[0]);
+
+      if (rightFrac[1] == 0)
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+      else if (resultDenum == 0)
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+      else if (resultDenum == 1)
+        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+
+      return new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
+        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+      });
+    }
+
+    /// <summary>
+    /// Evaluates the sum of two rationnal numbers.
+    /// </summary>
+    /// <returns>A rationnal number</returns>
+    public static ASTNode EvaluateSumRationnal(ASTNode leftNode, ASTNode rightNode)
+    {
+      int[] leftFrac = GetNumAndDenum(leftNode);
+      int[] rightFrac = GetNumAndDenum(rightNode);
+
+      int leftNum = leftFrac[0] * rightFrac[1];
+      int leftDenum = leftFrac[1] * rightFrac[1];
+      int rightNum = rightFrac[0] * leftFrac[1];
+
+      int resultNum = (leftNum + rightNum);
+      int resultDenum = leftDenum;
+
+      if (resultDenum == 0)
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+      else if (resultDenum == 1)
+        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+
+      return new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
+        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+      });
+    }
+
+    /// <summary>
+    /// Evaluates the sum of two rationnal numbers. Left - Right.
+    /// </summary>
+    /// <returns>A rationnal number</returns>
+    public static ASTNode EvaluateDiffRationnal(ASTNode leftNode, ASTNode rightNode)
+    {
+      int[] leftFrac = GetNumAndDenum(leftNode);
+      int[] rightFrac = GetNumAndDenum(rightNode);
+
+      int leftNum = leftFrac[0] * rightFrac[1];
+      int leftDenum = leftFrac[1] * rightFrac[1];
+      int rightNum = rightFrac[0] * leftFrac[1];
+
+      int resultNum = (leftNum - rightNum);
+      int resultDenum = leftDenum;
+
+      if (resultDenum == 0)
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+      else if (resultDenum == 1)
+        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+
+      return new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
+        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+      });
+    }
+
+    /// <summary>
+    /// Evaluates the power of a rationnal number to an integer exponent.
+    /// </summary>
+    /// <returns>A rationnal number</returns>
+    public static ASTNode EvaluatePowerRationnal(ASTNode baseNum, ASTNode exponent)
+    {
+      int[] baseFrac = GetNumAndDenum(baseNum);
+      int exponentInt = 0;
+
+      if (baseFrac[1] == 0)
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+
+      if (exponent.Token.Type is IntegerNum expInt)
+        exponentInt = expInt.intVal;
+      else
+        throw new ArgumentException("The 'exponent' should be an integer.");
+
+      if (baseFrac[0] != 0)
+      {
+        if (exponentInt >= 0)
+        {
+          int[] recPow = EvaluatePowerRationnalRec(baseFrac, exponentInt - 1);
+          int[] result = EvaluateProductRationnalRec(recPow, baseFrac);
+
+          if (result[1] == 1)
+            return new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>());
+
+          return new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>()),
+            new ASTNode(Token.Integer(result[1].ToString()), new List<ASTNode>())
+          });
+        }
+        else if (exponentInt == 0)
+          return new ASTNode(Token.Integer("1"), new List<ASTNode>());
+        else if (exponentInt == -1)
+          return new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer(baseFrac[1].ToString()), new List<ASTNode>()),
+            new ASTNode(Token.Integer(baseFrac[0].ToString()), new List<ASTNode>())
+          });
+        else
+        {
+          int[] inverse = new int[] { baseFrac[1], baseFrac[0] };
+          int[] result =  EvaluatePowerRationnalRec(inverse, -exponentInt);
+
+          if (result[1] == 1)
+            return new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>());
+
+          return new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>()),
+            new ASTNode(Token.Integer(result[1].ToString()), new List<ASTNode>())
+          });
+        }
+      }
+      else
+      {
+        if (exponentInt >= 1)
+          return new ASTNode(Token.Integer("0"), new List<ASTNode>());
+
+        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+      }
+
+    }
+
+    /// <summary>
+    /// Converts a rational number node to an array numerator and denumerator.
+    /// </summary>
+    /// <returns>Int array of [numerator, denumerator]</returns>
+    /// <exception cref="ArgumentException">The given node is not a rational number</exception>
+    public static int[] GetNumAndDenum(ASTNode node)
+    {
+      int[] frac = new int[2];
+      if (node.Token.Type is IntegerNum nodeInt)
+      {
+        frac[0] = nodeInt.intVal;
+        frac[1] = 1;
+      }
+      else if (node.Token.Type is Fraction)
+      {
+        frac[0] = ((IntegerNum)node.OperandAt(0).Token.Type).intVal;
+        frac[1] = ((IntegerNum)node.OperandAt(1).Token.Type).intVal;
+      }
+      else
+        throw new ArgumentException("The 'node' should be a rationnal number");
+
+      return frac;
+    }
     #region Helper Functions
     private static List<double> EvaluateArgs(List<ASTNode> args,  Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)
     {
@@ -151,6 +384,29 @@ namespace CAS.Core
       for (int i = resultValues.Count() - 2; i >= 0; i--)
         result = Math.Pow(resultValues[i], result);
       return result;
+    }
+    
+    private static int[] EvaluatePowerRationnalRec(int[] baseFrac, int exponent)
+    {
+      if (exponent >= 0)
+      {
+        int[] recPow = EvaluatePowerRationnalRec(baseFrac, exponent - 1);
+        return EvaluateProductRationnalRec(recPow, baseFrac);
+      }
+      else if (exponent == 0)
+        return new int[] { 1, 1 }; // Base case 1
+      else if (exponent == -1)
+        return new int[] { baseFrac[1], baseFrac[0] }; // Base case 2
+      else
+      {
+        int[] inverse = new int[] { baseFrac[1], baseFrac[0] };
+        return EvaluatePowerRationnalRec(inverse, -exponent);
+      }
+    }
+
+    private static int[] EvaluateProductRationnalRec(int[] leftFrac, int[] rightFrac)
+    {
+      return new int[] { leftFrac[0] * rightFrac[0], leftFrac[1] * rightFrac[1] };
     }
     #endregion
   }

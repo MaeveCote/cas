@@ -52,7 +52,7 @@ namespace CAS.UT
       string s3 = TokenListToTestString(result3.TokenizedExpression);
       var expectedSymbols = new HashSet<string>();
 
-      Assert.Equal("Number(5)Operator('-')Number(2)Operator('+')Number(3)", s1);
+      Assert.Equal("Number(5)Operator('+')Number(-1)Operator('*')Number(2)Operator('+')Number(3)", s1);
       AssertSetEqual(expectedSymbols, result1.Symbols);
       Assert.Equal("Number(6)Operator('*')Number(3)Operator('/')Number(2)", s2);
       AssertSetEqual(expectedSymbols, result2.Symbols);
@@ -79,7 +79,7 @@ namespace CAS.UT
       AssertSetEqual(expectedSymbols1, result1.Symbols);
       Assert.Equal("Variable('a')Operator('^')Number(3)Operator('+')Variable('b')Operator('^')Number(2)Operator('+')Variable('c')", s2);
       AssertSetEqual(expectedSymbols2, result2.Symbols);
-      Assert.Equal("Number(3)Operator('*')Variable('x')Operator('^')Number(2)Operator('-')Number(4)Operator('*')Variable('x')Operator('+')Number(5)", s3);
+      Assert.Equal("Number(3)Operator('*')Variable('x')Operator('^')Number(2)Operator('+')Number(-1)Operator('*')Number(4)Operator('*')Variable('x')Operator('+')Number(5)", s3);
       AssertSetEqual(expectedSymbols3, result3.Symbols);
     }
 

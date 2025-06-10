@@ -45,7 +45,9 @@ namespace CAS.Core.EquationParsing
 
       // To prevent useless parentheses and missing function arguments
       int countSinceLastLeftParenthesis = 0;
-      bool lastParenthesis = false; 
+      bool lastParenthesis = false;
+
+      bool isStartOnLine = true;
 
       foreach (char c in mathExpression)
       {
@@ -79,9 +81,26 @@ namespace CAS.Core.EquationParsing
             tokenizedExpression.Add(Token.Variable(ch.ToString()));
             symbols.Add(ch.ToString());
           }
-
           letterBuffer = "";
-          tokenizedExpression.Add(Token.Operator(c.ToString()));
+
+          // Convert '-' to addition or multiplication
+          if (c == '-')
+          {
+            if (isStartOnLine)
+            {
+              tokenizedExpression.Add(Token.Number("-1"));
+              tokenizedExpression.Add(Token.Operator("*"));
+            }
+            else
+            {
+              tokenizedExpression.Add(Token.Operator("+"));
+              tokenizedExpression.Add(Token.Number("-1"));
+              tokenizedExpression.Add(Token.Operator("*"));
+            }
+          }
+          // Add normal operator
+          else
+            tokenizedExpression.Add(Token.Operator(c.ToString()));
         }
         else if (IsLeftParenthesis(c))
         {
@@ -178,6 +197,10 @@ namespace CAS.Core.EquationParsing
         }
         if (lastParenthesis == true)
           countSinceLastLeftParenthesis++;
+
+        isStartOnLine = false;
+        if (c == '(' || c == ',')
+          isStartOnLine = true;
       }
 
       // Dump out the rest of the buffers in result

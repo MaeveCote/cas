@@ -12,7 +12,7 @@ namespace CAS.Core.EquationParsing
   public struct Token
   {
     /// <summary>
-    /// The type of thus token.
+    /// The type of this token.
     /// </summary>
     public TokenType Type { get; set; }
 
@@ -22,6 +22,8 @@ namespace CAS.Core.EquationParsing
     }
 
     public static Token Number(string value) => new(new Number(value));
+    public static Token Integer(string value) => new(new IntegerNum(value));
+    public static Token Fraction() => new(new Fraction());
     public static Token Variable(string value) => new(new Variable(value));
     public static Token Function(string value) => new(new Function(value));
     public static Token Function(string value, int argsCount) => new(new Function(value, argsCount));
@@ -29,6 +31,7 @@ namespace CAS.Core.EquationParsing
     public static Token Operator(string value) => new(new Operator(value));
     public static Token LeftParenthesis() => new(new LeftParenthesis()); 
     public static Token RightParenthesis() => new(new RightParenthesis());
+    public static Token Undefined() => new(new Undefined());
 
     public override string ToString()
     {

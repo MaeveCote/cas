@@ -20,6 +20,11 @@ namespace CAS.Core.EquationParsing
       return $"Token('{stringValue}')";
     }
   }
+  
+  public class Undefined : TokenType
+  {
+    public Undefined() : base("Undefined") { }
+  }
 
   public class Number : TokenType
   {
@@ -33,6 +38,28 @@ namespace CAS.Core.EquationParsing
     public override string ToString()
     {
       return $"Number({value})";
+    }
+  }
+
+  /// <summary>
+  /// Can safely use int type casting on the value without losing data.
+  /// </summary>
+  public class IntegerNum : Number
+  {
+    public int intVal { get; }
+    public IntegerNum(string _stringValue) : base(_stringValue)
+    {
+      intVal = int.Parse(_stringValue);
+    }
+  }
+
+  public class Fraction : TokenType
+  {
+    public Fraction() : base("Frac") { }
+
+    public override string ToString()
+    {
+      return $"Fraction('Frac')";
     }
   }
 
