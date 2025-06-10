@@ -11,6 +11,19 @@ namespace CAS.UT
 {
   public class CalculatorTest
   {
+    private ASTNode Int(int value) =>
+      new ASTNode(Token.Integer(value.ToString()), new List<ASTNode>());
+
+    private ASTNode Frac(int numerator, int denominator) =>
+      new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+      Int(numerator),
+      Int(denominator)
+      });
+
+    private ASTNode Invalid() =>
+      new ASTNode(Token.Operator("+"), new List<ASTNode>());
+
     [Fact]
     public void BasicArithmetic()
     {
@@ -190,7 +203,7 @@ namespace CAS.UT
     [Fact]
     public void CustomFunctions()
     {
-      var customFunctionTable = new Dictionary<string, Func<List<double>, double>> 
+      var customFunctionTable = new Dictionary<string, Func<List<double>, double>>
       {
         { "f", (args) => (Math.Pow(args[0], 2) + 2 * args[0] + 3)},
         { "g", (args) => (Math.Pow(Math.Sin(args[0]), 2) + Math.Pow(Math.Cos(args[0]), 2))},
@@ -291,10 +304,10 @@ namespace CAS.UT
           })
         })
       });
-      
-      Dictionary<string, double> symbolTable = new Dictionary<string, double> { { "x", 1.75 }, { "y", 30} };
-      
-      var customFunctionTable = new Dictionary<string, Func<List<double>, double>> 
+
+      Dictionary<string, double> symbolTable = new Dictionary<string, double> { { "x", 1.75 }, { "y", 30 } };
+
+      var customFunctionTable = new Dictionary<string, Func<List<double>, double>>
       {
         { "f", (args) => (Math.Pow(args[0], 2) + 2 * args[0] + 3)},
         { "g", (args) => (Math.Pow(Math.Sin(args[0]), 2) + Math.Cos(args[0]))},
@@ -303,6 +316,107 @@ namespace CAS.UT
       var result = Calculator.Evaluate(equation, symbolTable, customFunctionTable);
 
       Assert.Equal(49.481, result, 0.01);
+    }
+
+    [Fact]
+    public void RationalOperatorsEvaluateSumRationnal()
+    {
+      var left = Frac(1, 2);
+      var right = Frac(1, 3);
+
+      var result = Calculator.EvaluateSumRationnal(left, right);
+      Assert.Equal("5", result.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("6", result.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void RationalOperatorsEvaluateDiffRationnal()
+    {
+      var left = Frac(3, 4);
+      var right = Frac(1, 4);
+
+      var result = Calculator.EvaluateDiffRationnal(left, right);
+      Assert.Equal("8", result.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("16", result.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void RationalOperatorsEvaluateProductRationnal()
+    {
+      var left = Frac(2, 3);
+      var right = Frac(3, 4);
+
+      var result = Calculator.EvaluateProductRationnal(left, right);
+      Assert.Equal("6", result.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("12", result.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void RationalOperatorsEvaluateQuotientRationnal()
+    {
+      var left = Frac(4, 5);
+      var right = Frac(2, 3);
+
+      var result = Calculator.EvaluateQuotientRationnal(left, right);
+      Assert.Equal("12", result.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("10", result.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void RationalOperatorsEvaluatePowerRationnal()
+    {
+      var baseNode1 = Frac(2, 3);
+      var exponent1 = Int(2);
+
+      var result1 = Calculator.EvaluatePowerRationnal(baseNode1, exponent1);
+      Assert.Equal("24", result1.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("54", result1.OperandAt(1).Token.Type.stringValue);
+
+      var baseNode2 = Frac(1, 4);
+      var exponent2 = Int(-3);
+
+      var result2 = Calculator.EvaluatePowerRationnal(baseNode2, exponent2);
+      Assert.Equal("256", result2.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("4", result2.OperandAt(1).Token.Type.stringValue);
+
+      var baseNode3 = Int(5);
+      var exponent3 = Int(0);
+
+      var result3 = Calculator.EvaluatePowerRationnal(baseNode3, exponent3);
+      Assert.Equal("5", result3.OperandAt(0).Token.Type.stringValue);
+      Assert.Equal("5", result3.OperandAt(1).Token.Type.stringValue);
+    }
+
+    [Fact]
+    public void RationalOperatorsInvalidArguments()
+    {
+      var valid = Int(1);
+      var invalid = Invalid();
+
+      Assert.Throws<ArgumentException>(() =>
+      {
+        Calculator.EvaluateSumRationnal(valid, invalid);
+      });
+
+      Assert.Throws<ArgumentException>(() =>
+      {
+        Calculator.EvaluateDiffRationnal(invalid, valid);
+      });
+
+      Assert.Throws<ArgumentException>(() =>
+      {
+        Calculator.EvaluateProductRationnal(invalid, invalid);
+      });
+
+      Assert.Throws<ArgumentException>(() =>
+      {
+        Calculator.EvaluateQuotientRationnal(invalid, valid);
+      });
+
+      Assert.Throws<ArgumentException>(() =>
+      {
+        Calculator.EvaluatePowerRationnal(invalid, valid);
+      });
     }
   }
 }
