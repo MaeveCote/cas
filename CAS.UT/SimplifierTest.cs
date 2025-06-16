@@ -243,7 +243,7 @@ namespace CAS.UT
       Assert.True(simplifier.SimplifyRationalNumber(frac10) == simplified10);
     }
     [Fact]
-    public void SimplifyRNE_SimpleAddition()
+    public void SimplifyRNE_Addition()
     {
       var input = Op("+", Int(2), Int(3)); // 2 + 3
       var simplifier = new Simplifier();
@@ -253,7 +253,7 @@ namespace CAS.UT
     }
 
     [Fact]
-    public void SimplifyRNE_MediumNestedExpression()
+    public void SimplifyRNE_NestedExpression()
     {
       // (2/3 + 3/4) * 2
       var frac1 = Frac(2, 3);
@@ -270,7 +270,7 @@ namespace CAS.UT
     }
 
     [Fact]
-    public void SimplifyRNE_HardDeepExpression()
+    public void SimplifyRNE_DeepExpression()
     {
       // ((1 + 1/2) ^ 2) / (3 - 1/3)
       var half = Frac(1, 2);
@@ -292,7 +292,7 @@ namespace CAS.UT
     }
 
     [Fact]
-    public void SimplifyRNE_InvalidDecimalInput_Throws()
+    public void SimplifyRNE_InvalidDecimalInputThrows()
     {
       var invalid = Decimal("2.5");
       var simplifier = new Simplifier();

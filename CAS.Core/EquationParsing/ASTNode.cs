@@ -26,6 +26,16 @@ namespace CAS.Core.EquationParsing
       foreach (ASTNode n in Children)
         n.Parent = this;
     }
+
+    /// <summary>
+    /// Constructs a new ASTNode with no children.
+    /// </summary>
+    public ASTNode(Token token)
+    {
+      Token = token;
+      Parent = null;
+      Children = new List<ASTNode>();
+    }
     
     /// <summary>
     /// Copy constructor
@@ -108,6 +118,98 @@ namespace CAS.Core.EquationParsing
       Token = other.Token;
       // Deep copy of children
       Children = other.Children.Select(child => new ASTNode(child)).ToList();
+    }
+
+    /// <summary>
+    /// Returns the base of the expression if this is a power, itself if it is an operator or Undefined otherwise.
+    /// </summary>
+    public ASTNode Base()
+    {
+      if (Token.Type is Operator op)
+      {
+        if (op.stringValue == "^")
+          return this.OperandAt(0);
+        return this;
+      }
+
+      if (Token.Type is Variable)
+        return this;
+
+      return NewUndefined();
+    }
+
+    /// <summary>
+    /// Returns the exponent of the expression if this is a power, 1 if it is an operator or Undefined otherwise.
+    /// </summary>
+    public ASTNode Exponent()
+    {
+      if (Token.Type is Operator op)
+      {
+        if (op.stringValue == "^")
+          return this.OperandAt(1);
+        return new ASTNode(Token.Integer("1"));
+      }
+
+      if (Token.Type is Variable)
+        return new ASTNode(Token.Integer("1"));
+
+      return NewUndefined();
+    }
+
+    /// <summary>
+    /// Returns the terms of a product, a unary product if it is an operator or Undefined otherwise.
+    /// </summary>
+    /// <returns></returns>
+    public ASTNode Term()
+    {
+      if (Token.Type is Operator op)
+      {
+        if (op.stringValue == "*")
+        {
+          var u1 = this.OperandAt(0);
+          if (u1.Token.Type is Number || u1.Token.Type is Fraction)
+            return new ASTNode(Token.Operator("*"), this.Children.GetRange(1, Children.Count - 1));
+          return this;
+        }
+        return new ASTNode(Token.Operator("*"), new List<ASTNode> { this });
+      }
+
+      if (Token.Type is Variable)
+        return new ASTNode(Token.Operator("*"), new List<ASTNode> { this });
+
+      return NewUndefined();
+    }
+
+    /// <summary>
+    /// Returns the constant of a product, 1 if it is an operator or Undefined otherwise.
+    /// </summary>
+    /// <returns></returns>
+    public ASTNode Const()
+    {
+      if (Token.Type is Operator op)
+      {
+        if (op.stringValue == "*")
+        {
+          var u1 = this.OperandAt(0);
+          if (u1.Token.Type is Number || u1.Token.Type is Fraction)
+            return u1;
+          return new ASTNode(Token.Integer("1"));
+        }
+        return new ASTNode(Token.Integer("1"));
+      }
+
+      if (Token.Type is Variable)
+        return new ASTNode(Token.Integer("1"));
+
+      return NewUndefined();
+    }
+
+    /// <summary>
+    /// Creates an Undefined ASTNode
+    /// </summary>
+    public static ASTNode NewUndefined()
+    {
+      return new ASTNode(Token.Undefined());
     }
 
     #endregion

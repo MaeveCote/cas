@@ -111,6 +111,7 @@ namespace CAS.Core
 
       throw new InvalidOperationException("Unsupported token type, the node is not evaluable.");
     }
+
     public static int Remainder(int a, int b)
     {
       return ((a % b) + Math.Abs(b)) % Math.Abs(b);
@@ -153,14 +154,14 @@ namespace CAS.Core
       int resultDenum = (leftFrac[1] * rightFrac[1]);
 
       if (resultDenum == 0)
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return ASTNode.NewUndefined();
       else if (resultDenum == 1)
-        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+        return new ASTNode(Token.Integer(resultNum.ToString()));
 
       return new ASTNode(Token.Fraction(), new List<ASTNode>
       {
-        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
-        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+        new ASTNode(Token.Integer(resultNum.ToString())),
+        new ASTNode(Token.Integer(resultDenum.ToString()))
       });
     }
 
@@ -177,16 +178,16 @@ namespace CAS.Core
       int resultDenum = (leftFrac[1] * rightFrac[0]);
 
       if (rightFrac[1] == 0)
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return ASTNode.NewUndefined();
       else if (resultDenum == 0)
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return ASTNode.NewUndefined();
       else if (resultDenum == 1)
-        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+        return new ASTNode(Token.Integer(resultNum.ToString()));
 
       return new ASTNode(Token.Fraction(), new List<ASTNode>
       {
-        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
-        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+        new ASTNode(Token.Integer(resultNum.ToString())),
+        new ASTNode(Token.Integer(resultDenum.ToString()))
       });
     }
 
@@ -207,14 +208,14 @@ namespace CAS.Core
       int resultDenum = leftDenum;
 
       if (resultDenum == 0)
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return ASTNode.NewUndefined();
       else if (resultDenum == 1)
-        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+        return new ASTNode(Token.Integer(resultNum.ToString()));
 
       return new ASTNode(Token.Fraction(), new List<ASTNode>
       {
-        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
-        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+        new ASTNode(Token.Integer(resultNum.ToString())),
+        new ASTNode(Token.Integer(resultDenum.ToString()))
       });
     }
 
@@ -235,14 +236,14 @@ namespace CAS.Core
       int resultDenum = leftDenum;
 
       if (resultDenum == 0)
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return new ASTNode(Token.Undefined());
       else if (resultDenum == 1)
-        return new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>());
+        return new ASTNode(Token.Integer(resultNum.ToString()));
 
       return new ASTNode(Token.Fraction(), new List<ASTNode>
       {
-        new ASTNode(Token.Integer(resultNum.ToString()), new List<ASTNode>()),
-        new ASTNode(Token.Integer(resultDenum.ToString()), new List<ASTNode>())
+        new ASTNode(Token.Integer(resultNum.ToString())),
+        new ASTNode(Token.Integer(resultDenum.ToString()))
       });
     }
 
@@ -256,7 +257,7 @@ namespace CAS.Core
       int exponentInt = 0;
 
       if (baseFrac[1] == 0)
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return ASTNode.NewUndefined();
 
       if (exponent.Token.Type is IntegerNum expInt)
         exponentInt = expInt.intVal;
@@ -271,21 +272,21 @@ namespace CAS.Core
           int[] result = EvaluateProductRationnalRec(recPow, baseFrac);
 
           if (result[1] == 1)
-            return new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>());
+            return new ASTNode(Token.Integer(result[0].ToString()));
 
           return new ASTNode(Token.Fraction(), new List<ASTNode>
           {
-            new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>()),
-            new ASTNode(Token.Integer(result[1].ToString()), new List<ASTNode>())
+            new ASTNode(Token.Integer(result[0].ToString())),
+            new ASTNode(Token.Integer(result[1].ToString()))
           });
         }
         else if (exponentInt == 0)
-          return new ASTNode(Token.Integer("1"), new List<ASTNode>());
+          return new ASTNode(Token.Integer("1"));
         else if (exponentInt == -1)
           return new ASTNode(Token.Fraction(), new List<ASTNode>
           {
-            new ASTNode(Token.Integer(baseFrac[1].ToString()), new List<ASTNode>()),
-            new ASTNode(Token.Integer(baseFrac[0].ToString()), new List<ASTNode>())
+            new ASTNode(Token.Integer(baseFrac[1].ToString())),
+            new ASTNode(Token.Integer(baseFrac[0].ToString()))
           });
         else
         {
@@ -293,21 +294,21 @@ namespace CAS.Core
           int[] result =  EvaluatePowerRationnalRec(inverse, -exponentInt);
 
           if (result[1] == 1)
-            return new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>());
+            return new ASTNode(Token.Integer(result[0].ToString()));
 
           return new ASTNode(Token.Fraction(), new List<ASTNode>
           {
-            new ASTNode(Token.Integer(result[0].ToString()), new List<ASTNode>()),
-            new ASTNode(Token.Integer(result[1].ToString()), new List<ASTNode>())
+            new ASTNode(Token.Integer(result[0].ToString())),
+            new ASTNode(Token.Integer(result[1].ToString()))
           });
         }
       }
       else
       {
         if (exponentInt >= 1)
-          return new ASTNode(Token.Integer("0"), new List<ASTNode>());
+          return new ASTNode(Token.Integer("0"));
 
-        return new ASTNode(Token.Undefined(), new List<ASTNode>());
+        return new ASTNode(Token.Undefined());
       }
 
     }
@@ -335,7 +336,9 @@ namespace CAS.Core
 
       return frac;
     }
-    #region Helper Functions
+
+    #region Private methods
+
     private static List<double> EvaluateArgs(List<ASTNode> args,  Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)
     {
 
@@ -345,6 +348,7 @@ namespace CAS.Core
 
       return evalArgs;
     }
+
     private static double ComputeAddition(List<double> resultValues)
     {
       double result = resultValues[0];
@@ -353,6 +357,7 @@ namespace CAS.Core
         result += resultValues[i];
       return result;
     }
+
     private static double ComputeSubstraction(List<double> resultValues)
     {
       double result = resultValues[0];
@@ -361,6 +366,7 @@ namespace CAS.Core
         result -= resultValues[i];
       return result;
     }
+
     private static double ComputeMultiplication(List<double> resultValues)
     {
       double result = resultValues[0];
@@ -369,6 +375,7 @@ namespace CAS.Core
         result *= resultValues[i];
       return result;
     }
+    
     private static double ComputeDivision(List<double> resultValues)
     {
       double result = resultValues[0];
@@ -377,6 +384,7 @@ namespace CAS.Core
         result /= resultValues[i];
       return result;
     }
+
     private static double ComputePower(List<double> resultValues)
     {
       double result = resultValues[resultValues.Count() - 1];
@@ -408,6 +416,7 @@ namespace CAS.Core
     {
       return new int[] { leftFrac[0] * rightFrac[0], leftFrac[1] * rightFrac[1] };
     }
+
     #endregion
   }
-}
+

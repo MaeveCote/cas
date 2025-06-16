@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.Design.Serialization;
 using System.Diagnostics.CodeAnalysis;
+using System.Formats.Asn1;
 using System.Linq;
 using System.Security.RightsManagement;
 using System.Text;
@@ -95,24 +96,24 @@ namespace CAS.Core
         {
           int num = numToken.intVal;
           int denum = denToken.intVal;
-          
+
           if (num == 0)
-            return new ASTNode(Token.Integer("0"), new List<ASTNode>());
+            return new ASTNode(Token.Integer("0"));
           else if (denum == 0)
-            return new ASTNode(Token.Undefined(), new List<ASTNode>());
+            return ASTNode.NewUndefined();
 
           if (Calculator.Remainder(num, denum) == 0)
-            return new ASTNode(Token.Integer(Calculator.Quotient(num, denum).ToString()), new List<ASTNode>());
+            return new ASTNode(Token.Integer(Calculator.Quotient(num, denum).ToString()));
 
           int gcd = Calculator.GCD(num, denum);
           if (denum > 0)
             return new ASTNode(Token.Fraction(),
-              new List<ASTNode> { new ASTNode(Token.Integer(Calculator.Quotient(num, gcd).ToString()), new List<ASTNode>()),
-            new ASTNode(Token.Integer(Calculator.Quotient(denum, gcd).ToString()), new List<ASTNode>()) });
+              new List<ASTNode> { new ASTNode(Token.Integer(Calculator.Quotient(num, gcd).ToString())),
+            new ASTNode(Token.Integer(Calculator.Quotient(denum, gcd).ToString()))});
 
           return new ASTNode(Token.Fraction(),
-            new List<ASTNode> { new ASTNode(Token.Integer(Calculator.Quotient(-num, gcd).ToString()), new List<ASTNode>()),
-          new ASTNode(Token.Integer(Calculator.Quotient(-denum, gcd).ToString()), new List<ASTNode>()) });
+            new List<ASTNode> { new ASTNode(Token.Integer(Calculator.Quotient(-num, gcd).ToString())),
+          new ASTNode(Token.Integer(Calculator.Quotient(-denum, gcd).ToString()))});
         }
 
         return input;
@@ -136,6 +137,124 @@ namespace CAS.Core
       return SimplifyRationalNumber(result);
     }
 
+    /// <summary>
+    /// Simplifies a Basic Algebraic Expression (BAE) into an Automatically Simplifes Algebraic Expression (ASAE)
+    /// by applying recursively a combination of simplify power, product, sum, quotien and difference.
+    /// </summary>
+    /// <param name="input">A BAE</param>
+    /// <returns>An ASAE</returns>
+    public ASTNode AutomaticSimplify(ASTNode input)
+    {
+      if (input.Token.Type is Number || input.Token.Type is Variable)
+        return input;
+      else if (input.Token.Type is Fraction)
+        return SimplifyRationalNumber(input);
+      else
+      {
+        // Simplify the nodes recursively
+        for (int i = 0; i < input.Children.Count(); i++)
+          input.Children[i] = AutomaticSimplify(input.Children[i]);
+
+        if (input.Kind() == "^")
+          return SimplifyPower(input);
+        if (input.Kind() == "*")
+          return SimplifyProduct(input);
+        if (input.Kind() == "+")
+          return SimplifySum(input);
+        if (input.Kind() == "-")
+          return SimplifyDifference(input);
+        if (input.Kind() == "/")
+          return SimplifyQuotient(input);
+        if (input.Token.Type is Function)
+          return SimplifyFunction(input);
+      }
+
+      return ASTNode.NewUndefined();
+    }
+
+    /// <summary>
+    /// Simplifies a power of ASAE.
+    /// </summary>
+    /// <returns>An ASAE</returns>
+    public ASTNode SimplifyPower(ASTNode input)
+    {
+      var powBase = input.Base();
+      var powExp = input.Exponent();
+
+      // SPOW-1
+      if (powBase.Token.Type is Undefined || powExp.Token.Type is Undefined)
+        return ASTNode.NewUndefined();
+
+      if (powBase.Token.Type is IntegerNum intNum)
+      {
+        // SPOW-2
+        if (intNum.intVal == 0)
+        {
+          if (powExp.Token.Type is Number || powExp.Token.Type is Fraction)
+            return new ASTNode(Token.Integer("0"), new List<ASTNode>());
+          else
+            return ASTNode.NewUndefined();
+        }
+        // SPOW-3
+        else if (intNum.intVal == 1)
+          return new ASTNode(Token.Integer("1"), new List<ASTNode>());
+      }
+      // SPOW-4
+      if (powExp.Token.Type is IntegerNum num)
+        return SimplifyIntegerPower(powBase, num.intVal);
+
+      // SPOW-5
+      return input;
+    }
+    
+    /// <summary>
+    /// Simplifies a product of ASAE.
+    /// </summary>
+    /// <returns>An ASAE</returns>
+    public ASTNode SimplifyProduct(ASTNode input)
+    {
+      return null;
+      
+    }
+
+    /// <summary>
+    /// Simplifies a sum of ASAE.
+    /// </summary>
+    /// <returns>An ASAE</returns>
+    public ASTNode SimplifySum(ASTNode input)
+    {
+      return null;
+    }
+
+    /// <summary>
+    /// Simplifies a quotient of ASAE.
+    /// </summary>
+    /// <returns>An ASAE</returns>
+    public ASTNode SimplifyQuotient(ASTNode input)
+    {
+      return null;
+    }
+
+    /// <summary>
+    /// Simplifies a difference of ASAE.
+    /// </summary>
+    /// <returns>An ASAE</returns>
+    public ASTNode SimplifyDifference(ASTNode input)
+    {
+      return null;
+    }
+
+    /// <summary>
+    /// Simplifies a function of ASAE.
+    /// </summary>
+    /// <returns>An ASAE</returns>
+    public ASTNode SimplifyFunction(ASTNode input)
+    {
+      return null;
+    }
+
+    #region Private methods
+
     private static bool IsInteger(Number num)
     {
       return Math.Abs(num.value % 1) < EPSILON;
@@ -149,7 +268,7 @@ namespace CAS.Core
       {
         var frac = Calculator.GetNumAndDenum(input);
         if (frac[1] == 0)
-          return new ASTNode(Token.Undefined(), new List<ASTNode>());
+          return ASTNode.NewUndefined();
         return input;
       }
       else if (input.Token.Type is Operator op)
@@ -158,7 +277,7 @@ namespace CAS.Core
         {
           var simplifiedBase = SimplifyRNE_Rec(input.OperandAt(0));
           if (simplifiedBase.Token.Type is Undefined)
-            return new ASTNode(Token.Undefined(), new List<ASTNode>());
+            return ASTNode.NewUndefined();
           return Calculator.EvaluatePowerRationnal(simplifiedBase, input.OperandAt(1));
         }
 
@@ -167,7 +286,7 @@ namespace CAS.Core
         {
           var simplifiedChild = SimplifyRNE_Rec(child);
           if (simplifiedChild.Token.Type is Undefined)
-            return new ASTNode(Token.Undefined(), new List<ASTNode>());
+            return ASTNode.NewUndefined();
           simplifiedNodes.Add(SimplifyRNE_Rec(child));
         }
 
@@ -209,6 +328,49 @@ namespace CAS.Core
 
       throw new ArgumentException("The input is not a RNE.");
     }
+
+    private ASTNode SimplifyIntegerPower(ASTNode powBase, int exp)
+    {
+      // SINTPOW-1
+      if (powBase.Token.Type is IntegerNum || powBase.Token.Type is Fraction)
+        return SimplifyRNE(new ASTNode(Token.Operator("^"), new List<ASTNode> { powBase, new ASTNode(Token.Integer(exp.ToString())) }));
+
+      // SINTPOW-2
+      if (exp == 0)
+        return new ASTNode(Token.Integer("1"));
+      // SINTPOW-3
+      if (exp == 1)
+        return powBase;
+
+      // SINTPOW-4
+      if (powBase.Token.Type.stringValue == "^")
+      {
+        var r = powBase.OperandAt(0);
+        var s = powBase.OperandAt(1);
+        var p = SimplifyProduct(new ASTNode(Token.Operator("*"), new List<ASTNode> { s, new ASTNode(Token.Integer(exp.ToString())) } ));
+
+        if (p.Token.Type is IntegerNum num)
+          return SimplifyIntegerPower(r, num.intVal);
+
+        return new ASTNode(Token.Operator("^"), new List<ASTNode> { r, p });
+      }
+
+      // SINTPOW-5
+      if (powBase.Token.Type.stringValue == "*")
+      {
+        // Distribute the exponent to the product
+        var mappingResult = new List<ASTNode>();
+        foreach (ASTNode operand in powBase.Children)
+          mappingResult.Add(SimplifyIntegerPower(operand, exp));
+
+        return SimplifyProduct(new ASTNode(Token.Operator("*"), mappingResult));
+      }
+
+      // SINTPOW-6
+      return new ASTNode(Token.Operator("^"), new List<ASTNode> { powBase, new ASTNode(Token.Integer(exp.ToString())) });
+    }
+
+    #endregion
   }
 }
 
