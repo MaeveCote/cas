@@ -25,7 +25,7 @@ namespace CAS.Core
     /// <param name="symbolTable">The symbol table to associate variables with values.</param>
     /// <exception cref="KeyNotFoundException">A variable in the equation is not found in the symbol table.</exception>
     /// <returns>The result of the equation</returns>
-    public static double Evaluate(ASTNode root, Dictionary<string, double>? symbolTable = null, 
+    public static double Evaluate(ASTNode root, Dictionary<string, double>? symbolTable = null,
       Dictionary<string, Func<List<double>, double>>? customFunctionTable = null)
     {
       // Default variables trick
@@ -291,7 +291,7 @@ namespace CAS.Core
         else
         {
           int[] inverse = new int[] { baseFrac[1], baseFrac[0] };
-          int[] result =  EvaluatePowerRationnalRec(inverse, -exponentInt);
+          int[] result = EvaluatePowerRationnalRec(inverse, -exponentInt);
 
           if (result[1] == 1)
             return new ASTNode(Token.Integer(result[0].ToString()));
@@ -339,7 +339,7 @@ namespace CAS.Core
 
     #region Private methods
 
-    private static List<double> EvaluateArgs(List<ASTNode> args,  Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)
+    private static List<double> EvaluateArgs(List<ASTNode> args, Dictionary<string, double> symbolTable, Dictionary<string, Func<List<double>, double>> customFunctionTable)
     {
 
       List<double> evalArgs = new List<double>();
@@ -375,7 +375,7 @@ namespace CAS.Core
         result *= resultValues[i];
       return result;
     }
-    
+
     private static double ComputeDivision(List<double> resultValues)
     {
       double result = resultValues[0];
@@ -393,7 +393,7 @@ namespace CAS.Core
         result = Math.Pow(resultValues[i], result);
       return result;
     }
-    
+
     private static int[] EvaluatePowerRationnalRec(int[] baseFrac, int exponent)
     {
       if (exponent >= 0)
@@ -419,4 +419,5 @@ namespace CAS.Core
 
     #endregion
   }
+}
 

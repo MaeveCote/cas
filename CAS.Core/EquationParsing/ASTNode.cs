@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.RightsManagement;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Navigation;
 
 namespace CAS.Core.EquationParsing
 {
@@ -46,7 +48,7 @@ namespace CAS.Core.EquationParsing
       Children = other.Children.Select(child => new ASTNode(child)).ToList();
     }
 
-    #region Operators
+    #region Custom Operators
 
     /// <summary>
     /// Returns the as a string the kind of operator this node is.
@@ -205,15 +207,55 @@ namespace CAS.Core.EquationParsing
     }
 
     /// <summary>
-    /// Creates an Undefined ASTNode
+    /// Returns the value of this node as a double.
     /// </summary>
-    public static ASTNode NewUndefined()
+    /// <exception cref="ArgumentException">This operation should not be called on a non constant node.</exception>
+    public double EvaluateAsDouble()
     {
-      return new ASTNode(Token.Undefined());
+      if (Token.Type is Number num)
+        return num.value;
+      if (Token.Type is Fraction frac)
+        return Children[0].EvaluateAsDouble() / Children[1].EvaluateAsDouble();
+
+      throw new ArgumentException("This operation should not be called on a non constant node.");
     }
 
     #endregion
 
+    #region Standard operators
+
+    public static bool operator ==(ASTNode left, ASTNode right)
+    {
+      if (ReferenceEquals(left, right))
+        return true;
+
+      if (left is null || right is null)
+        return false;
+
+      return left.Equals(right);
+    }
+
+    public static bool operator !=(ASTNode left, ASTNode right)
+    {
+      return !(left == right);
+    }
+    public static bool operator <(ASTNode u, ASTNode v) => Compare(u, v);
+    public static bool operator >(ASTNode u, ASTNode v) => Compare(v, u);
+
+    #endregion
+
+    #region Type Checks
+
+    public bool IsConstant() => Token.Type is Number || Token.Type is Fraction;
+    public bool IsSymbol() => Token.Type is Variable;
+    public bool IsPower() => Token.Type.stringValue == "^";
+    public bool IsProduct() => Token.Type.stringValue == "*";
+    public bool IsSum() => Token.Type.stringValue == "+";
+    public bool IsFunction() => Token.Type is Function;
+    public bool IsAddOrMultiply() => Token.Type.stringValue == "+" || Token.Type.stringValue == "*";
+    // public bool IsFactorial() => 
+ 
+    #endregion
     public override bool Equals(object obj)
     {
       if (obj is not ASTNode other)
@@ -281,21 +323,135 @@ namespace CAS.Core.EquationParsing
       return hash;
     }
 
-    public static bool operator ==(ASTNode left, ASTNode right)
+    private static bool Compare(ASTNode u, ASTNode v)
     {
-      if (ReferenceEquals(left, right))
-        return true;
+      // O-1: Both constants (integer or fraction)
+      if (u.IsConstant() && v.IsConstant())
+      {
+        return u.EvaluateAsDouble() < v.EvaluateAsDouble();
+      }
 
-      if (left is null || right is null)
-        return false;
+      // O-2: Both symbols (variables)
+      if (u.IsSymbol() && v.IsSymbol())
+      {
+        return LexCompare(u.Token.Type.stringValue, v.Token.Type.stringValue) < 0;
+      }
 
-      return left.Equals(right);
+      // O-3: Both products or both sums
+      if (u.IsAddOrMultiply() && v.IsAddOrMultiply() && u.Token.Equals(v.Token))
+      {
+        int m = u.Children.Count, n = v.Children.Count;
+        for (int j = 1; j <= Math.Min(m, n); ++j)
+        {
+          var uj = u.Children[m - j];
+          var vj = v.Children[n - j];
+          if (!uj.Equals(vj))
+            return Compare(uj, vj);
+        }
+        return m < n;
+      }
+
+      // O-4: Both powers
+      if (u.IsPower() && v.IsPower())
+      {
+        var (ubase, uexp) = (u.Children[0], u.Children[1]);
+        var (vbase, vexp) = (v.Children[0], v.Children[1]);
+        return ubase != vbase ? Compare(ubase, vbase) : Compare(uexp, vexp);
+      }
+
+      // O-5: Both factorials
+      /*
+      if (u.IsFactorial() && v.IsFactorial())
+      {
+        return Compare(u.Children[0], v.Children[0]);
+      }
+      */
+
+      // O-6: Both functions
+      if (u.IsFunction() && v.IsFunction())
+      {
+        var kindU = u.Token.Type.stringValue;
+        var kindV = v.Token.Type.stringValue;
+        if (kindU != kindV)
+          return LexCompare(kindU, kindV) < 0;
+
+        int m = u.Children.Count, n = v.Children.Count;
+        for (int j = 0; j < Math.Min(m, n); ++j)
+        {
+          if (!u.Children[j].Equals(v.Children[j]))
+            return Compare(u.Children[j], v.Children[j]);
+        }
+        return m < n;
+      }
+
+      // O-7: constant < anything else
+      if (u.IsConstant() && !v.IsConstant()) return true;
+      if (!u.IsConstant() && v.IsConstant()) return false;
+
+      // O-8: product vs anything else
+      if (u.IsProduct() && !v.IsProduct()) return Compare(u, UnaryProduct(v));
+      if (!u.IsProduct() && v.IsProduct()) return !Compare(v, u);
+
+      // O-9: power vs other
+      if (u.IsPower() && !v.IsPower()) return Compare(u, PromoteToPower(v));
+      if (!u.IsPower() && v.IsPower()) return !Compare(v, u);
+
+      // O-10: sum vs other
+      if (u.IsSum() && !v.IsSum()) return Compare(u, UnarySum(v));
+      if (!u.IsSum() && v.IsSum()) return !Compare(v, u);
+
+      // O-11: factorial vs function or symbol
+      /*
+      if (u.IsFactorial() && (v.IsFunction() || v.IsSymbol()))
+      {
+        return u.Children[0].Equals(v) ? false : Compare(u, Factorial(v));
+      }
+      if ((u.IsFunction() || u.IsSymbol()) && v.IsFactorial())
+      {
+        return v.Children[0].Equals(u) ? true : !Compare(v, Factorial(u));
+      }
+      */
+
+      // O-12: function vs symbol
+      if (u.IsFunction() && v.IsSymbol())
+      {
+        return u.Token.Type.stringValue == v.Token.Type.stringValue ? false : LexCompare(u.Token.Type.stringValue, v.Token.Type.stringValue) < 0;
+      }
+      if (u.IsSymbol() && v.IsFunction())
+      {
+        return u.Token.Type.stringValue == v.Token.Type.stringValue ? true : LexCompare(u.Token.Type.stringValue, v.Token.Type.stringValue) < 0;
+      }
+
+      // O-13: default fallback
+      return !Compare(v, u);
     }
 
-    public static bool operator !=(ASTNode left, ASTNode right)
+    private static int LexCompare(string a, string b)
     {
-      return !(left == right);
+      static int CharRank(char c)
+      {
+        if (char.IsDigit(c)) return c - '0';
+        if (char.IsUpper(c)) return 10 + (c - 'A');
+        if (char.IsLower(c)) return 36 + (c - 'a');
+        return -1;
+      }
+      for (int i = 0; i < Math.Min(a.Length, b.Length); i++)
+      {
+        int cmp = CharRank(a[i]) - CharRank(b[i]);
+        if (cmp != 0) return cmp;
+      }
+      return a.Length - b.Length;
     }
+
+    #region Builders
+
+    private static ASTNode UnaryProduct(ASTNode v) => new(Token.Operator("*"), new() { v });
+    private static ASTNode UnarySum(ASTNode v) => new(Token.Operator("+"), new() { v });
+    // private static ASTNode Factorial(ASTNode v) => new(Token.Factorial(), new() { v });
+    private static ASTNode PromoteToPower(ASTNode v) => new(Token.Operator("^"), new() { v, new(Token.Integer("1")) });
+    public static ASTNode NewUndefined() => new ASTNode(Token.Undefined());
+
+    #endregion
 
     public override string ToString()
     {

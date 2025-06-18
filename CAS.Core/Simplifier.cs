@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design.Serialization;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Formats.Asn1;
 using System.Linq;
@@ -213,8 +214,32 @@ namespace CAS.Core
     /// <returns>An ASAE</returns>
     public ASTNode SimplifyProduct(ASTNode input)
     {
-      return null;
-      
+      // SPRD-1 and 2
+      bool isZero = false;
+      foreach (ASTNode child in input.Children)
+      {
+        if (child.Token.Type is Undefined)
+          return ASTNode.NewUndefined();
+        if (!isZero && child.Token.Type.stringValue == "0")
+          isZero = true;
+      }
+
+      if (isZero)
+        return new ASTNode(Token.Integer("0"));
+
+      // SPRD-3
+      if (input.Children.Count == 1)
+        return input.Children[0];
+
+      // SPRD-4
+      var recSimplified = SimplifyProductRec(input.Children);
+
+      if (recSimplified.Count == 0)
+        return new ASTNode(Token.Integer("1"));
+      if (recSimplified.Count == 1)
+        return recSimplified[0];
+
+      return new ASTNode(Token.Operator("*"), recSimplified);
     }
 
     /// <summary>
@@ -259,7 +284,7 @@ namespace CAS.Core
     {
       return Math.Abs(num.value % 1) < EPSILON;
     }
-    
+
     private ASTNode SimplifyRNE_Rec(ASTNode input)
     {
       if (input.Token.Type is IntegerNum)
@@ -368,6 +393,118 @@ namespace CAS.Core
 
       // SINTPOW-6
       return new ASTNode(Token.Operator("^"), new List<ASTNode> { powBase, new ASTNode(Token.Integer(exp.ToString())) });
+    }
+
+    private List<ASTNode> SimplifyProductRec(List<ASTNode> operands)
+    {
+      // SPRDREC-1
+      if (operands.Count == 2)
+      {
+        var u1 = operands[0];
+        var u2 = operands[1];
+
+        bool u1IsProduct = u1.IsProduct();
+        bool u2IsProduct = u2.IsProduct();
+
+        if (!u1IsProduct && !u2IsProduct)
+        {
+          // SPRDREC-1.1
+          if (u1.IsConstant() && u2.IsConstant())
+          {
+            var result = SimplifyRNE(new ASTNode(Token.Operator("*"), operands));
+            if (result.Token.Type.stringValue == "1")
+              return new List<ASTNode>();
+
+            return new List<ASTNode> { result };
+          }
+
+          // SPRDREC-1.2
+          if (u1.Token.Type.stringValue == "1")
+            return new List<ASTNode> { u2 };
+          if (u2.Token.Type.stringValue == "1")
+            return new List<ASTNode> { u1 };
+
+          // SPRDREC-1.3
+          if (u1.Base() == u2.Base())
+          {
+            var combinedExp = SimplifySum(new ASTNode(Token.Operator("+"), new List<ASTNode> { u1.Exponent(), u2.Exponent() }));
+            var combinedPow = SimplifyPower(new ASTNode(Token.Operator("^"), new List<ASTNode> { u1.Base(), combinedExp }));
+
+            if (combinedPow.Token.Type.stringValue == "1")
+              return new List<ASTNode>();
+            return new List<ASTNode> { combinedPow };
+          }
+
+          // SPRDREC-1.4
+          if (u1 < u2)
+            return new List<ASTNode> { u2, u1 };
+
+          // SPRDREC-1.5
+          return operands;
+        }
+
+        // SPRDREC-2
+        if (u1IsProduct && u2IsProduct)
+        {
+          // SPRDREC-2.1
+          return MergeProducts(u1.Children, u2.Children);
+        }
+        if (u1IsProduct)
+        {
+          // SPRDREC-2.2
+          return MergeProducts(u1.Children, new List<ASTNode> { u2 });
+        }
+        // u2 is a product
+        // SPRDREC-2.3
+        return MergeProducts(new List<ASTNode> { u1 }, u2.Children);
+      }
+
+      // SPRDREC-3
+      var restSimplified = SimplifyProductRec(operands.GetRange(1, operands.Count() - 1));
+
+      if (operands[0].IsProduct())
+        return MergeProducts(operands[0].Children, restSimplified);
+      return MergeProducts(new List<ASTNode> { operands[0] }, restSimplified);
+    }
+
+    private List<ASTNode> MergeProducts(List<ASTNode> p, List<ASTNode> q)
+    {
+      // MPRD-1
+      if (q.Count() == 0)
+        return p;
+      // MPRD-2
+      if (p.Count() == 0)
+        return q;
+
+      // MPRD-3
+      var p1 = p[0];
+      var q1 = q[0];
+      var h = SimplifyProductRec(new List<ASTNode> { p1, q1 });
+
+      // MPRD-3.1
+      if (h.Count() == 0)
+        return MergeProducts(p.GetRange(1, p.Count() - 1), q.GetRange(1, q.Count() - 1));
+      // MPRD-3.2
+      if (h.Count() == 1)
+      {
+        var merged = MergeProducts(p.GetRange(1, p.Count() - 1), q.GetRange(1, q.Count() - 1));
+        merged.Insert(0, h[0]);
+        return merged;
+      }
+      
+      // h.Count() must be 2
+      // MPRD-3.3
+      if (h[0] == p1)
+      {
+        var merged = MergeProducts(p.GetRange(1, p.Count() - 1), q);
+        merged.Insert(0, p1);
+        return merged;
+      }
+
+      // MPRD-3.4
+      var mergeRes = MergeProducts(p, q.GetRange(1, q.Count() - 1));
+      mergeRes.Insert(0, q1);
+      return mergeRes;
     }
 
     #endregion
