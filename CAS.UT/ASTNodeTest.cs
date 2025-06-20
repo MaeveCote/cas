@@ -133,7 +133,7 @@ namespace CAS.UT
     }
 
     [Fact]
-    public void TestTermAndConst()
+    public void TermAndConst()
     {
       // Helper to check unary product
       void AssertUnaryProduct(ASTNode result, ASTNode expectedChild)
@@ -145,7 +145,7 @@ namespace CAS.UT
 
       // Case 1: Variable x
       var x = new ASTNode(Token.Variable("x"));
-      AssertUnaryProduct(x.Term(), x);
+      AssertUnaryProduct(x.Terms(), x);
       Assert.Equal("1", x.Const().Token.Type.stringValue);
 
       // Case 2: Power (x^2)
@@ -154,7 +154,7 @@ namespace CAS.UT
         new ASTNode(Token.Variable("x")),
         new ASTNode(Token.Integer("2"))
       });
-      AssertUnaryProduct(power.Term(), power);
+      AssertUnaryProduct(power.Terms(), power);
       Assert.Equal("1", power.Const().Token.Type.stringValue);
 
       // Case 3: Function (sin(x))
@@ -162,7 +162,7 @@ namespace CAS.UT
       {
         new ASTNode(Token.Variable("x"))
       });
-      AssertUnaryProduct(func.Term(), func);
+      AssertUnaryProduct(func.Terms(), func);
       Assert.Equal("1", func.Const().Token.Type.stringValue);
 
       // Case 4: Sum (x + 2)
@@ -171,7 +171,7 @@ namespace CAS.UT
         new ASTNode(Token.Variable("x")),
         new ASTNode(Token.Integer("2"))
       });
-      AssertUnaryProduct(sum.Term(), sum);
+      AssertUnaryProduct(sum.Terms(), sum);
       Assert.Equal("1", sum.Const().Token.Type.stringValue);
 
       // Case 5: Product of constant and variable (2 * x)
@@ -180,12 +180,12 @@ namespace CAS.UT
         new ASTNode(Token.Integer("2")),
         new ASTNode(Token.Variable("x"))
       });
-      AssertUnaryProduct(prodConstFirst.Term(), prodConstFirst.Children[1]); // x
+      AssertUnaryProduct(prodConstFirst.Terms(), prodConstFirst.Children[1]); // x
       Assert.Equal("2", prodConstFirst.Const().Token.Type.stringValue);
 
       // Case 7: Integer
       var integer = new ASTNode(Token.Integer("4"));
-      Assert.True(integer.Term().Token.Type is Undefined);
+      Assert.True(integer.Terms().Token.Type is Undefined);
       Assert.True(integer.Const().Token.Type is Undefined);
 
       // Case 8: Fraction
@@ -194,9 +194,10 @@ namespace CAS.UT
         new ASTNode(Token.Integer("5")),
         new ASTNode(Token.Integer("3"))
       });
-      Assert.True(fraction.Term().Token.Type is Undefined);
+      Assert.True(fraction.Terms().Token.Type is Undefined);
       Assert.True(fraction.Const().Token.Type is Undefined);
     }
+
     [Fact]
     public void Equality()
     {
@@ -360,6 +361,50 @@ namespace CAS.UT
       //var factY = new ASTNode(Token.Factorial(), new() { symbolY });
       //Assert.True(factX < factY);
       //Assert.False(factY < factX);
+    }
+
+    [Fact]
+    public void AreLikeTerms()
+    {
+      // Helper to make nodes quickly
+      ASTNode Int(string val) => new(Token.Integer(val));
+      ASTNode Var(string name) => new(Token.Variable(name));
+      ASTNode Mul(params ASTNode[] nodes) => new(Token.Operator("*"), nodes.ToList());
+      ASTNode Pow(ASTNode b, ASTNode e) => new(Token.Operator("^"), new() { b, e });
+
+      // 1. Same variable, different coefficients → alike
+      Assert.True(ASTNode.AreLikeTerms(Mul(Int("2"), Var("x")), Mul(Int("3"), Var("x"))));
+
+      // 2. Same variable and power, different coefficients → alike
+      Assert.True(ASTNode.AreLikeTerms(Mul(Int("2"), Pow(Var("x"), Int("2"))), Mul(Int("5"), Pow(Var("x"), Int("2")))));
+
+      // 3. Different variable → not alike
+      Assert.False(ASTNode.AreLikeTerms(Mul(Int("2"), Var("x")), Mul(Int("2"), Var("y"))));
+
+      // 4. Different exponent → not alike
+      Assert.False(ASTNode.AreLikeTerms(Mul(Int("2"), Pow(Var("x"), Int("2"))), Mul(Int("5"), Pow(Var("x"), Int("3")))));
+
+      // 5. Same constant → alike
+      Assert.True(ASTNode.AreLikeTerms(Int("5"), Int("5")));
+
+      // 6. Constant and variable → not alike
+      Assert.False(ASTNode.AreLikeTerms(Int("5"), Var("x")));
+
+      // 7. Same nested product: (2 * x * y) vs (5 * x * y) → alike
+      Assert.True(ASTNode.AreLikeTerms(Mul(Int("2"), Var("x"), Var("y")), Mul(Int("5"), Var("x"), Var("y"))));
+
+      // 8. Different nested symbolic part: (2 * x * y) vs (5 * x * z) → not alike
+      Assert.False(ASTNode.AreLikeTerms(Mul(Int("2"), Var("x"), Var("y")), Mul(Int("5"), Var("x"), Var("z"))));
+
+      // 9. Same function: sin(x) vs 2 * sin(x) → alike
+      var sinX = new ASTNode(Token.Function("sin"), new List<ASTNode> { Var("x") });
+      Assert.True(ASTNode.AreLikeTerms(sinX, Mul(Int("2"), sinX)));
+
+      // 10. Powers with variables: x^2 vs 4 * x^2 → alike
+      Assert.True(ASTNode.AreLikeTerms(Pow(Var("x"), Int("2")), Mul(Int("4"), Pow(Var("x"), Int("2")))));
+
+      // 11. Constant vs product → not alike
+      Assert.False(ASTNode.AreLikeTerms(Int("2"), Mul(Int("2"), Var("x"))));
     }
   }
 }

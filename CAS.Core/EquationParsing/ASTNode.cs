@@ -161,8 +161,8 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the terms of a product, a unary product if it is an operator or Undefined otherwise.
     /// </summary>
-    /// <returns></returns>
-    public ASTNode Term()
+    /// <returns>A product without the constant.</returns>
+    public ASTNode Terms()
     {
       if (Token.Type is Operator op)
       {
@@ -185,6 +185,7 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the constant of a product, 1 if it is an operator or Undefined otherwise.
     /// </summary>
+    /// <remarks>To get a list of terms do : node.Terms().Children</remarks>
     /// <returns></returns>
     public ASTNode Const()
     {
@@ -209,6 +210,7 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the value of this node as a double.
     /// </summary>
+    /// <remarks>This operator works only on ASAEs. This is intended to be used in the simplifier.</remarks>
     /// <exception cref="ArgumentException">This operation should not be called on a non constant node.</exception>
     public double EvaluateAsDouble()
     {
@@ -218,6 +220,76 @@ namespace CAS.Core.EquationParsing
         return Children[0].EvaluateAsDouble() / Children[1].EvaluateAsDouble();
 
       throw new ArgumentException("This operation should not be called on a non constant node.");
+    }
+
+    /// <summary>
+    /// Verifies if two nodes are alike.
+    /// </summary>
+    public static bool AreLikeTerms(ASTNode input1, ASTNode input2)
+    {
+      ASTNode u1, u2;
+      if (input1.IsProduct())
+      {
+        u1 = input1.Terms();
+        if (u1.Children.Count() == 1)
+          u1 = u1.Children[0];
+      }
+      else u1 = input1;
+      if (input2.IsProduct())
+      {
+        u2 = input2.Terms();
+        if (u2.Children.Count() == 1)
+          u2 = u2.Children[0];
+      }
+      else u2 = input2;
+
+      if (u1.IsConstant() && u2.IsConstant())
+        return true;
+      if (u1.IsSymbol() && u2.IsSymbol())
+        return u1.Kind() == u2.Kind();
+      if (u1.IsPower() && u2.IsPower())
+        return (AreLikeTerms(u1.Base(), u2.Base())) && (u1.Exponent() == u2.Exponent());
+      if (u1.IsProduct() && u2.IsProduct())
+      {
+        var u1Terms = u1.Terms().Children;
+        var u2Terms = u2.Terms().Children;
+
+        if (u1Terms.Count() != u2Terms.Count())
+          return false;
+        for (int i = 0; i < u1Terms.Count(); i++)
+        {
+          if (!AreLikeTerms(u1Terms[i], u2Terms[i]))
+            return false;
+        }
+
+        return true;
+      }
+      if (u1.IsFunction() && u2.IsFunction())
+      {
+        if ((u1.Children.Count() != u2.Children.Count()) || (u1.Kind() != u2.Kind()))
+          return false;
+        for (int i = 0; i < u1.Children.Count(); i++)
+        {
+          if (u1.Children[i] != u2.Children[i])
+            return false;
+        }
+
+        return true;
+      }
+      if (u1.IsSum() && u2.IsSum())
+      {
+        if (u1.Children.Count() != u2.Children.Count())
+          return false;
+        for (int i = 0; i < u1.Children.Count(); i++)
+        {
+          if (u1.Children[i] != u2.Children[i])
+            return false;
+        }
+
+        return true;
+      }
+
+      return false;
     }
 
     #endregion

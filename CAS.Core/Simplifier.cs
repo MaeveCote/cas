@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Formats.Asn1;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.RightsManagement;
 using System.Text;
 using System.Threading.Tasks;
@@ -248,7 +249,26 @@ namespace CAS.Core
     /// <returns>An ASAE</returns>
     public ASTNode SimplifySum(ASTNode input)
     {
-      return null;
+      // SSUM-1
+      foreach (ASTNode child in input.Children)
+      {
+        if (child.Token.Type is Undefined)
+          return ASTNode.NewUndefined();
+      }
+
+      // SSUM-2
+      if (input.Children.Count == 1)
+        return input.Children[0];
+
+      // SSUM-3
+      var recSimplified = SimplifySumRec(input.Children);
+
+      if (recSimplified.Count == 0)
+        return new ASTNode(Token.Integer("0"));
+      if (recSimplified.Count == 1)
+        return recSimplified[0];
+
+      return new ASTNode(Token.Operator("+"), recSimplified);
     }
 
     /// <summary>
@@ -408,6 +428,7 @@ namespace CAS.Core
 
         if (!u1IsProduct && !u2IsProduct)
         {
+          // Both are not products
           // SPRDREC-1.1
           if (u1.IsConstant() && u2.IsConstant())
           {
@@ -444,11 +465,14 @@ namespace CAS.Core
         }
 
         // SPRDREC-2
+        // Both are products
         if (u1IsProduct && u2IsProduct)
         {
           // SPRDREC-2.1
           return MergeProducts(u1.Children, u2.Children);
         }
+        
+        // One of the is a product
         if (u1IsProduct)
         {
           // SPRDREC-2.2
@@ -457,6 +481,91 @@ namespace CAS.Core
         // u2 is a product
         // SPRDREC-2.3
         return MergeProducts(new List<ASTNode> { u1 }, u2.Children);
+      }
+
+      // SPRDREC-3
+      var restSimplified = SimplifyProductRec(operands.GetRange(1, operands.Count() - 1));
+
+      if (operands[0].IsProduct())
+        return MergeProducts(operands[0].Children, restSimplified);
+      return MergeProducts(new List<ASTNode> { operands[0] }, restSimplified);
+    }
+
+    private List<ASTNode> SimplifySumRec(List<ASTNode> operands)
+    {
+      // SSUMREC-1
+      if (operands.Count == 2)
+      {
+        var u1 = operands[0];
+        var u2 = operands[1];
+
+        bool u1IsSum = u1.IsSum();
+        bool u2IsSum = u2.IsSum();
+
+        if (!u1IsSum && !u2IsSum)
+        {
+          // Neither is a sum
+          // SSUMREC-1.1
+          if (u1.IsConstant() && u2.IsConstant())
+          {
+            var result = SimplifyRNE(new ASTNode(Token.Operator("+"), operands));
+            if (result.Token.Type.stringValue == "0")
+              return new List<ASTNode>();
+
+            return new List<ASTNode> { result };
+          }
+
+          // SSUMREC-1.2
+          if (u1.Token.Type.stringValue == "0")
+            return new List<ASTNode> { u2 };
+          if (u2.Token.Type.stringValue == "0")
+            return new List<ASTNode> { u1 };
+
+          // SPRDREC-1.3
+          if (ASTNode.AreLikeTerms(u1, u2))
+          {
+            // Combine the constants
+            var const1 = u1.Const();
+            var const2 = u2.Const();
+
+            var combinedConst = SimplifyRNE(new ASTNode(Token.Operator("+"), new() { const1, const2 }));
+
+            var terms = u1.Terms();
+            if (combinedConst.Token.Type.stringValue == "1")
+            {
+              if (terms.Children.Count() == 1)
+                return new List<ASTNode> { terms.Children[0] };
+              return terms.Children;
+            }
+
+            if (terms.Children.Count() == 1)
+              return new List<ASTNode> { combinedConst, terms.Children[0] };
+            terms.Children.Insert(0, combinedConst);
+            return terms.Children;
+          }
+
+          // SPRDREC-1.4
+          if (u1 < u2)
+            return new List<ASTNode> { u2, u1 };
+
+          // SPRDREC-1.5
+          return operands;
+        }
+
+        // SPRDREC-2
+        if (u1IsSum && u2IsSum)
+        {
+          // SPRDREC-2.1
+          return MergeSums(u1.Children, u2.Children);
+        }
+        if (u1IsSum)
+        {
+          // SPRDREC-2.2
+          return MergeSums(u1.Children, new List<ASTNode> { u2 });
+        }
+        // u2 is a sum
+        // SPRDREC-2.3
+        return MergeSums(new List<ASTNode> { u1 }, u2.Children);
       }
 
       // SPRDREC-3
@@ -505,6 +614,11 @@ namespace CAS.Core
       var mergeRes = MergeProducts(p, q.GetRange(1, q.Count() - 1));
       mergeRes.Insert(0, q1);
       return mergeRes;
+    }
+
+    private List<ASTNode> MergeSums(List<ASTNode> p, List<ASTNode> q)
+    {
+      return null;
     }
 
     #endregion
