@@ -204,6 +204,9 @@ namespace CAS.Core
       // SPOW-4
       if (powExp.Token.Type is IntegerNum num)
         return SimplifyIntegerPower(powBase, num.intVal);
+      // SPOW-4 special
+      if (powExp.Token.Type is Fraction)
+        return SimplifyFractionalPower(powBase, powExp);
 
       // SPOW-5
       return input;
@@ -277,7 +280,25 @@ namespace CAS.Core
     /// <returns>An ASAE</returns>
     public ASTNode SimplifyQuotient(ASTNode input)
     {
-      return null;
+      // Convert the '/' operators to multiplications and powers or fractions
+      if (input.Children.All(child => child.Token.Type is Number))
+      {
+        // This is a fraction
+        input.Token = Token.Fraction();
+        return SimplifyRNE(input);
+      }
+
+      // This is an operation
+      input.Token = Token.Operator("*");
+      var tempChild = input.Children[1];
+      if (tempChild.Token.Type is Number)
+      {
+        input.Children[1] = new ASTNode(Token.Fraction(), new List<ASTNode> { new ASTNode(Token.Integer("-1"), new List<ASTNode>()), tempChild });
+      }
+      input.Children[1] = new ASTNode(Token.Operator("^"), new List<ASTNode> { tempChild, new ASTNode(Token.Integer("-1"), new List<ASTNode>()) });
+
+      input.Children[1] = SimplifyPower(input.Children[1]);
+      return SimplifyProduct(input);
     }
 
     /// <summary>
@@ -286,7 +307,17 @@ namespace CAS.Core
     /// <returns>An ASAE</returns>
     public ASTNode SimplifyDifference(ASTNode input)
     {
-      return null;
+      // Convert difference into multiplications and addition
+      if (input.Children.Count == 1)
+        return SimplifyProduct(new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("-1"), new List<ASTNode>()),
+          input.Children[0]}));
+
+      var prod = SimplifyProduct(new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("-1"), new List<ASTNode>()),
+          input.Children[1]}));
+
+      return SimplifySum(new ASTNode(Token.Operator("+"), new List<ASTNode> { input.Children[0], prod } ));
     }
 
     /// <summary>
@@ -295,7 +326,13 @@ namespace CAS.Core
     /// <returns>An ASAE</returns>
     public ASTNode SimplifyFunction(ASTNode input)
     {
-      return null;
+      foreach (ASTNode operands in input.Children)
+      {
+        if (operands.Token.Type is Undefined)
+          return ASTNode.NewUndefined();
+      }
+
+      return input;
     }
 
     #region Private methods
@@ -396,6 +433,8 @@ namespace CAS.Core
 
         if (p.Token.Type is IntegerNum num)
           return SimplifyIntegerPower(r, num.intVal);
+        if (p.Token.Type is Fraction)
+          return SimplifyFractionalPower(r, p);
 
         return new ASTNode(Token.Operator("^"), new List<ASTNode> { r, p });
       }
@@ -413,6 +452,54 @@ namespace CAS.Core
 
       // SINTPOW-6
       return new ASTNode(Token.Operator("^"), new List<ASTNode> { powBase, new ASTNode(Token.Integer(exp.ToString())) });
+    }
+
+    private ASTNode SimplifyFractionalPower(ASTNode powBase, ASTNode frac)
+    {
+      // SPOW-1
+      if (powBase.Token.Type is Undefined || frac.Token.Type is Undefined)
+        return new ASTNode(Token.Undefined());
+
+      // SPOW-2
+      if (powBase.Token.Type is IntegerNum num && num.intVal == 0)
+      {
+        if (frac.Token.Type is Fraction && frac.Children[0].IsPositive())
+          return new ASTNode(Token.Integer("0"));
+        return new ASTNode(Token.Undefined());
+      }
+
+      // SPOW-3
+      if (powBase.Token.Type is IntegerNum one && one.intVal == 1)
+        return new ASTNode(Token.Integer("1"));
+
+      // SINTPOW-4
+      if (powBase.Token.Type.stringValue == "^")
+      {
+        var r = powBase.Children[0];
+        var s = powBase.Children[1];
+        var st = SimplifyProduct(new ASTNode(Token.Operator("*"), new() { s, frac }));
+
+        // recurse if possible
+        if (st.Token.Type is IntegerNum intSt)
+          return SimplifyIntegerPower(r, intSt.intVal);
+        if (st.Token.Type is Fraction)
+          return SimplifyFractionalPower(r, st);
+
+        return new ASTNode(Token.Operator("^"), new() { r, st });
+      }
+
+      // SINTPOW-5
+      if (powBase.Token.Type.stringValue == "*")
+      {
+        var poweredOperands = new List<ASTNode>();
+        foreach (var child in powBase.Children)
+          poweredOperands.Add(SimplifyFractionalPower(child, frac));
+
+        return SimplifyProduct(new ASTNode(Token.Operator("*"), poweredOperands));
+      }
+
+      // SINTPOW-6
+      return new ASTNode(Token.Operator("^"), new() { powBase, frac });
     }
 
     private List<ASTNode> SimplifyProductRec(List<ASTNode> operands)
@@ -457,7 +544,7 @@ namespace CAS.Core
           }
 
           // SPRDREC-1.4
-          if (u1 < u2)
+          if (u2 < u1)
             return new List<ASTNode> { u2, u1 };
 
           // SPRDREC-1.5
@@ -471,7 +558,7 @@ namespace CAS.Core
           // SPRDREC-2.1
           return MergeProducts(u1.Children, u2.Children);
         }
-        
+
         // One of the is a product
         if (u1IsProduct)
         {
@@ -530,6 +617,9 @@ namespace CAS.Core
 
             var combinedConst = SimplifyRNE(new ASTNode(Token.Operator("+"), new() { const1, const2 }));
 
+            if (combinedConst.Token.Type.stringValue == "0")
+              return new List<ASTNode> { new ASTNode(Token.Integer("0"), new List<ASTNode>()) };
+
             var terms = u1.Terms();
             if (combinedConst.Token.Type.stringValue == "1")
             {
@@ -538,14 +628,12 @@ namespace CAS.Core
               return terms.Children;
             }
 
-            if (terms.Children.Count() == 1)
-              return new List<ASTNode> { combinedConst, terms.Children[0] };
             terms.Children.Insert(0, combinedConst);
-            return terms.Children;
+            return new List<ASTNode> { terms };
           }
 
           // SPRDREC-1.4
-          if (u1 < u2)
+          if (u2 < u1)
             return new List<ASTNode> { u2, u1 };
 
           // SPRDREC-1.5
@@ -569,11 +657,11 @@ namespace CAS.Core
       }
 
       // SPRDREC-3
-      var restSimplified = SimplifyProductRec(operands.GetRange(1, operands.Count() - 1));
+      var restSimplified = SimplifySumRec(operands.GetRange(1, operands.Count() - 1));
 
-      if (operands[0].IsProduct())
-        return MergeProducts(operands[0].Children, restSimplified);
-      return MergeProducts(new List<ASTNode> { operands[0] }, restSimplified);
+      if (operands[0].IsSum())
+        return MergeSums(operands[0].Children, restSimplified);
+      return MergeSums(new List<ASTNode> { operands[0] }, restSimplified);
     }
 
     private List<ASTNode> MergeProducts(List<ASTNode> p, List<ASTNode> q)
@@ -600,7 +688,7 @@ namespace CAS.Core
         merged.Insert(0, h[0]);
         return merged;
       }
-      
+
       // h.Count() must be 2
       // MPRD-3.3
       if (h[0] == p1)
@@ -618,7 +706,42 @@ namespace CAS.Core
 
     private List<ASTNode> MergeSums(List<ASTNode> p, List<ASTNode> q)
     {
-      return null;
+      // MPRD-1
+      if (q.Count() == 0)
+        return p;
+      // MPRD-2
+      if (p.Count() == 0)
+        return q;
+
+      // MPRD-3
+      var p1 = p[0];
+      var q1 = q[0];
+      var h = SimplifySumRec(new List<ASTNode> { p1, q1 });
+
+      // MPRD-3.1
+      if (h.Count() == 0)
+        return MergeSums(p.GetRange(1, p.Count() - 1), q.GetRange(1, q.Count() - 1));
+      // MPRD-3.2
+      if (h.Count() == 1)
+      {
+        var merged = MergeSums(p.GetRange(1, p.Count() - 1), q.GetRange(1, q.Count() - 1));
+        merged.Insert(0, h[0]);
+        return merged;
+      }
+
+      // h.Count() must be 2
+      // MPRD-3.3
+      if (h[0] == p1)
+      {
+        var merged = MergeSums(p.GetRange(1, p.Count() - 1), q);
+        merged.Insert(0, p1);
+        return merged;
+      }
+
+      // MPRD-3.4
+      var mergeRes = MergeSums(p, q.GetRange(1, q.Count() - 1));
+      mergeRes.Insert(0, q1);
+      return mergeRes;
     }
 
     #endregion

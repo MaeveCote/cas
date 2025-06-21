@@ -326,6 +326,12 @@ namespace CAS.Core.EquationParsing
     public bool IsFunction() => Token.Type is Function;
     public bool IsAddOrMultiply() => Token.Type.stringValue == "+" || Token.Type.stringValue == "*";
     // public bool IsFactorial() => 
+    public bool IsPositive()
+    {
+      if (Token.Type is Number num)
+        return num.value > 0;
+      return false;
+    }
  
     #endregion
     public override bool Equals(object obj)
@@ -395,7 +401,7 @@ namespace CAS.Core.EquationParsing
       return hash;
     }
 
-    private static bool Compare(ASTNode u, ASTNode v)
+    public static bool Compare(ASTNode u, ASTNode v)
     {
       // O-1: Both constants (integer or fraction)
       if (u.IsConstant() && v.IsConstant())
