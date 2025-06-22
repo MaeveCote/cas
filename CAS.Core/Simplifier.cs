@@ -30,6 +30,11 @@ namespace CAS.Core
     private bool USE_RADIANS;
 
 
+    /// <summary>
+    /// Constructs a mew Simplifier.
+    /// </summary>
+    /// <param name="simplifierEvalFunctions">Apply function evaluation if possible when simplifyina.</param>
+    /// <param name="useRadians">Use radians in trigonometric simplifying.</param>
     public Simplifier(bool simplifierEvalFunctions = false, bool useRadians = false)
     {
       SIMPLIFIER_EVAL_FUNCTIONS = simplifierEvalFunctions;
@@ -108,7 +113,7 @@ namespace CAS.Core
 
       if (result.Token.Type is Undefined)
         return result;
-      
+
       return SimplifyRationalNumber(result);
     }
 
@@ -157,7 +162,7 @@ namespace CAS.Core
       var powExp = input.Exponent();
 
       // Support for decimal number computations
-      if ((powBase.Token.Type is Number numberBase && !powBase.IsIntegerNum()) 
+      if ((powBase.Token.Type is Number numberBase && !powBase.IsIntegerNum())
         && powExp.Token.Type is Number numberExp)
       {
         double result = Math.Pow(numberBase.value, numberExp.value);
@@ -192,7 +197,7 @@ namespace CAS.Core
       // SPOW-5
       return input;
     }
-    
+
     /// <summary>
     /// Simplifies a product of ASAE.
     /// </summary>
@@ -298,7 +303,7 @@ namespace CAS.Core
           new ASTNode(Token.Integer("-1"), new List<ASTNode>()),
           input.Children[1]}));
 
-      return SimplifySum(new ASTNode(Token.Operator("+"), new List<ASTNode> { input.Children[0], prod } ));
+      return SimplifySum(new ASTNode(Token.Operator("+"), new List<ASTNode> { input.Children[0], prod }));
     }
 
     /// <summary>
@@ -412,7 +417,11 @@ namespace CAS.Core
       if (applyDecimalToRationalConversion)
       {
         if (root.IsConstant())
-          ConvertDecimalToRationnal(root);
+        {
+          var frac = ConvertDecimalToRationnal(root);
+          root.Token = frac.Token;
+          root.Children = frac.Children;
+        }
 
         return false;
       }
@@ -457,9 +466,63 @@ namespace CAS.Core
       }
     }
 
-    private void ConvertDecimalToRationnal(ASTNode number)
+    private ASTNode ConvertDecimalToRationnal(ASTNode number, double accuracy = EPSILON)
     {
-      
+      double value = ((Number)number.Token.Type).value;
+
+      // Split value in a sign, an integer part, a fractional part
+      int sign = value < 0 ? -1 : 1;
+      value = value < 0 ? -value : value;
+      int integerpart = (int)value;
+      value -= integerpart;
+
+      // check if the fractional part is near 0
+      double minimalvalue = value - accuracy;
+      if (minimalvalue < 0.0)
+        return new ASTNode(Token.Fraction(), new List<ASTNode> {
+          new ASTNode(Token.Integer((sign * integerpart).ToString())),
+          new ASTNode(Token.Integer("1")) });
+
+      // check if the fractional part is near 1
+      double maximumvalue = value + accuracy;
+      if (maximumvalue > 1.0)
+        return new ASTNode(Token.Fraction(), new List<ASTNode> {
+          new ASTNode(Token.Integer((sign * (integerpart + 1)).ToString())),
+          new ASTNode(Token.Integer("1")) });
+
+      // The lower fraction is 0/1
+      int lower_numerator = 0;
+      int lower_denominator = 1;
+
+      // The upper fraction is 1/1
+      int upper_numerator = 1;
+      int upper_denominator = 1;
+
+      while (true)
+      {
+        // The middle fraction is (lower_numerator + upper_numerator) / (lower_denominator + upper_denominator)
+        int middle_numerator = lower_numerator + upper_numerator;
+        int middle_denominator = lower_denominator + upper_denominator;
+
+        if (middle_denominator * maximumvalue < middle_numerator)
+        {
+          // real + error < middle : middle is our new upper
+          upper_numerator = middle_numerator;
+          upper_denominator = middle_denominator;
+        }
+        else if (middle_numerator < minimalvalue * middle_denominator)
+        {
+          // middle < real - error : middle is our new lower
+          lower_numerator = middle_numerator;
+          lower_denominator = middle_denominator;
+        }
+        else
+        {
+          return new ASTNode(Token.Fraction(), new List<ASTNode> {
+            new ASTNode(Token.Integer((sign * (integerpart * middle_denominator + middle_numerator)).ToString())),
+            new ASTNode(Token.Integer(middle_denominator.ToString())) });
+        }
+      }
     }
 
     private ASTNode SimplifyRNE_Rec(ASTNode input)
@@ -549,7 +612,7 @@ namespace CAS.Core
       {
         var r = powBase.OperandAt(0);
         var s = powBase.OperandAt(1);
-        var p = SimplifyProduct(new ASTNode(Token.Operator("*"), new List<ASTNode> { s, new ASTNode(Token.Integer(exp.ToString())) } ));
+        var p = SimplifyProduct(new ASTNode(Token.Operator("*"), new List<ASTNode> { s, new ASTNode(Token.Integer(exp.ToString())) }));
 
         if (p.Token.Type is IntegerNum num)
           return SimplifyIntegerPower(r, num.intVal);

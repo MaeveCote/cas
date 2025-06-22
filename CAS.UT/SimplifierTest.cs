@@ -70,6 +70,101 @@ namespace CAS.UT
       simplifier.FormatTree(tree2);
       Assert.True(tree2 == expected2);
     }
+
+    [Fact]
+    public void FormatTree_ConvertAllDecimalsToFractions()
+    {
+      var simplifier = new Simplifier();
+
+      var tree = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("0.5")),            // → 1/2
+        new ASTNode(Token.Number("0.3333333333")),   // → ~1/3
+        new ASTNode(Token.Number("0.6666666667")),   // → ~2/3
+        new ASTNode(Token.Number("1.25")),           // → 5/4
+        new ASTNode(Token.Number("-0.75")),          // → -3/4
+        new ASTNode(Token.Number("2.2")),            // → 11/5
+        new ASTNode(Token.Number("0.142857")),       // → ~1/7
+        new ASTNode(Token.Number("3.14159265")),     // → ~355/113 (π approx)
+        new ASTNode(Token.Number("2.718281828")),    // → ~193/71 (e approx)
+        new ASTNode(Token.Number("1234.56789")),     // large decimal
+        new ASTNode(Token.Number("-0.0009765625"))   // → -1/1024
+      });
+
+      var expected = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        // 0.5 = 1/2
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        }),
+        // 0.3333333333 ≈ 1/3
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("3"))
+        }),
+        // 0.6666666667 ≈ 2/3
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("2")),
+          new ASTNode(Token.Integer("3"))
+        }),
+        // 1.25 = 5/4
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("5")),
+          new ASTNode(Token.Integer("4"))
+        }),
+        // -0.75 = -3/4
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("-3")),
+          new ASTNode(Token.Integer("4"))
+        }),
+        // 2.2 = 11/5
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("11")),
+          new ASTNode(Token.Integer("5"))
+        }),
+        // 0.142857 ≈ 1/7
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("7"))
+        }),
+        // π ≈ 355/113
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("355")),
+          new ASTNode(Token.Integer("113"))
+        }),
+        // e ≈ 193/71
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("2721")),
+          new ASTNode(Token.Integer("1001"))
+        }),
+        // 1234.56789 ≈ 123456789 / 100000
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("1345679")),
+          new ASTNode(Token.Integer("1090"))
+        }),
+        // -0.0009765625 = -1/1024
+        new ASTNode(Token.Fraction(), new()
+        {
+          new ASTNode(Token.Integer("-1")),
+          new ASTNode(Token.Integer("1023"))
+        })
+      });
+
+      simplifier.FormatTree(tree, true);
+      Assert.True(tree == expected);
+    }
+
     [Fact]
     public void SimplifyRationalNumber()
     {
