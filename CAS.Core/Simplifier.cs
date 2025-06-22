@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Design.Serialization;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Eventing.Reader;
 using System.Formats.Asn1;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -10,6 +11,7 @@ using System.Security.RightsManagement;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using System.Xml.XPath;
 using CAS.Core.EquationParsing;
 
@@ -20,64 +22,35 @@ namespace CAS.Core
   /// </summary>
   public class Simplifier
   {
-    const double EPSILON = 1e-10;
+    // Constants
+    private const double EPSILON = 0.000001;
 
-    public Simplifier() { }
+    // Fields
+    private bool SIMPLIFIER_EVAL_FUNCTIONS;
+    private bool USE_RADIANS;
+
+
+    public Simplifier(bool simplifierEvalFunctions = false, bool useRadians = false)
+    {
+      SIMPLIFIER_EVAL_FUNCTIONS = simplifierEvalFunctions;
+      USE_RADIANS = useRadians;
+    }
 
     /// <summary>
-    /// Applys Depth First Search to format the nodes of the tree.
-    /// Converts division into multiplications with negative powers or fractions.
-    /// Groups the multiplication and additions together.
-    /// Converts Number to IntegerNum if it is not decimal.
+    /// Will make a tree entirely made of rational numbers or decimal numbers. If there is a single decimal number, it will convert the whole tree to decimals.
+    /// If you want to opposite, you can signal to convert the whole tree to rationnal by doing an approximate conversion.
     /// </summary>
     /// <remarks>This should be applied after building the AST.</remarks>
     /// <param name="root">The root of the tree.</param>
-    public void FormatTree(ASTNode root)
+    /// <param name="applyDecimalToRationalConversion">Wheter to apply the algorithm to approximately convert decimals to fractions.</param>
+    public void FormatTree(ASTNode root, bool applyDecimalToRationalConversion = false)
     {
-      // Format the children of the root
-      foreach (ASTNode child in root.Children)
-        FormatTree(child);
+      bool convertToDecimal = FormatTree_Rec(root, applyDecimalToRationalConversion);
 
-      // Convert the '/' operators to multiplications and powers or fractions
-      if (root.Token.Type.stringValue == "/")
+      if (convertToDecimal)
       {
-        if (root.Children.All(child => child.Token.Type is Number))
-        {
-          // This is a fraction
-          root.Token = Token.Fraction();
-        }
-        else
-        {
-          // This is an operation
-          root.Token = Token.Operator("*");
-          var tempChild = root.Children[1];
-          if (tempChild.Token.Type is Number)
-          {
-            root.Children[1] = new ASTNode(Token.Fraction(), new List<ASTNode> { new ASTNode(Token.Number("-1"), new List<ASTNode>()), tempChild });
-          }
-          root.Children[1] = new ASTNode(Token.Operator("^"), new List<ASTNode> { tempChild, new ASTNode(Token.Number("-1"), new List<ASTNode>()) });
-        }
+        ConvertTreeToDecimal(root);
       }
-
-      // Group the multiplications and additions together
-      if (root.Token.Type.stringValue == "*" || root.Token.Type.stringValue == "+")
-      {
-        for (int i = 0; i < root.Children.Count(); i++)
-        {
-          if (root.Children[i].Token.Type.stringValue == root.Token.Type.stringValue)
-          {
-            foreach (ASTNode child in root.Children[i].Children)
-            {
-              root.Children.Add(child);
-            }
-            root.Children.RemoveAt(i);
-          }
-        }
-      }
-
-      // Convert Number to IntegerNum if it is not a decimal number
-      if (root.Token.Type is Number && IsInteger((Number)root.Token.Type))
-        root.Token = Token.Integer(root.Token.Type.stringValue);
     }
 
     /// <summary>
@@ -88,7 +61,7 @@ namespace CAS.Core
     /// <exception cref="ArgumentException">The input is not a rationnal number.</exception>
     public ASTNode SimplifyRationalNumber(ASTNode input)
     {
-      if (input.Token.Type is IntegerNum)
+      if (input.IsIntegerNum())
         return input;
 
       else if (input.Token.Type is Fraction)
@@ -183,6 +156,14 @@ namespace CAS.Core
       var powBase = input.Base();
       var powExp = input.Exponent();
 
+      // Support for decimal number computations
+      if ((powBase.Token.Type is Number numberBase && !powBase.IsIntegerNum()) 
+        && powExp.Token.Type is Number numberExp)
+      {
+        double result = Math.Pow(numberBase.value, numberExp.value);
+        return new ASTNode(Token.Number(result.ToString()));
+      }
+
       // SPOW-1
       if (powBase.Token.Type is Undefined || powExp.Token.Type is Undefined)
         return ASTNode.NewUndefined();
@@ -236,7 +217,7 @@ namespace CAS.Core
         return input.Children[0];
 
       // SPRD-4
-      var recSimplified = SimplifyProductRec(input.Children);
+      var recSimplified = SimplifyProduct_Rec(input.Children);
 
       if (recSimplified.Count == 0)
         return new ASTNode(Token.Integer("1"));
@@ -264,7 +245,7 @@ namespace CAS.Core
         return input.Children[0];
 
       // SSUM-3
-      var recSimplified = SimplifySumRec(input.Children);
+      var recSimplified = SimplifySum_Rec(input.Children);
 
       if (recSimplified.Count == 0)
         return new ASTNode(Token.Integer("0"));
@@ -332,19 +313,158 @@ namespace CAS.Core
           return ASTNode.NewUndefined();
       }
 
+      // Add support for symbols 
+      if (!USE_RADIANS && input.Children.Count == 1 && input.Children[0].Token.Type is Number num)
+      {
+        if (input.Kind() == "sin")
+        {
+          if (EqualApprox(num, 0.0)) return new ASTNode(Token.Integer("0"));
+          if (EqualApprox(num, 30.0)) return new ASTNode(Token.Fraction(), new() { new(Token.Integer("1")), new(Token.Integer("2")) });
+          if (EqualApprox(num, 45.0)) return new ASTNode(Token.Number("0.70710678118")); // √2/2
+          if (EqualApprox(num, 45.0)) return new ASTNode(Token.Number("0.86602")); // √3/2
+          if (EqualApprox(num, 90.0)) return new ASTNode(Token.Integer("1"));
+          if (EqualApprox(num, 180.0)) return new ASTNode(Token.Integer("0"));
+          if (EqualApprox(num, 270.0)) return new ASTNode(Token.Integer("-1"));
+          if (EqualApprox(num, 360.0)) return new ASTNode(Token.Integer("0"));
+        }
+
+        else if (input.Kind() == "cos")
+        {
+          if (EqualApprox(num, 0.0)) return new ASTNode(Token.Integer("1"));
+          if (EqualApprox(num, 45.0)) return new ASTNode(Token.Number("0.8660254")); // √3/2
+          if (EqualApprox(num, 45.0)) return new ASTNode(Token.Number("0.7071067")); // √2/2
+          if (EqualApprox(num, 60.0)) return new ASTNode(Token.Fraction(), new() { new(Token.Integer("1")), new(Token.Integer("2")) });
+          if (EqualApprox(num, 90.0)) return new ASTNode(Token.Integer("0"));
+          if (EqualApprox(num, 180.0)) return new ASTNode(Token.Integer("-1"));
+          if (EqualApprox(num, 270.0)) return new ASTNode(Token.Integer("0"));
+          if (EqualApprox(num, 360.0)) return new ASTNode(Token.Integer("1"));
+        }
+
+        else if (input.Kind() == "tan")
+        {
+          if (EqualApprox(num, 0.0)) return new ASTNode(Token.Integer("0"));
+          if (EqualApprox(num, 30.0)) return new ASTNode(Token.Number("0.5773502")); // 1/√3
+          if (EqualApprox(num, 45.0)) return new ASTNode(Token.Integer("1"));
+          if (EqualApprox(num, 60.0)) return new ASTNode(Token.Number("2.7320508")); // √3
+          if (EqualApprox(num, 90.0)) return new ASTNode(Token.Undefined());
+          if (EqualApprox(num, 180.0)) return new ASTNode(Token.Integer("0"));
+          if (EqualApprox(num, 270.0)) return new ASTNode(Token.Undefined());
+          if (EqualApprox(num, 360.0)) return new ASTNode(Token.Integer("0"));
+        }
+      }
+      if (input.Kind() == "log")
+      {
+        if (input.Children.Count() == 1 && input.Children[0].Token.Type is Number b)
+        {
+          var res = Math.Log(b.value, 10.0);
+          if (IsIntegerApprox(res))
+            return new ASTNode(Token.Integer((Math.Round(res)).ToString()));
+        }
+      }
+      if (input.Kind() == "ln")
+      {
+        if (input.Children.Count() == 1 && input.Children[0].Token.Type is Number a)
+        {
+          var res = Math.Log(a.value);
+          if (IsIntegerApprox(res))
+            return new ASTNode(Token.Integer((Math.Round(res)).ToString()));
+        }
+      }
+
+      if (SIMPLIFIER_EVAL_FUNCTIONS)
+      {
+        if (input.Children.All(child => child.IsConstant()))
+        {
+          var result = Calculator.Evaluate(input);
+          return new ASTNode(Token.Number(result.ToString()));
+        }
+      }
+
       return input;
     }
 
     #region Private methods
 
-    private static bool IsInteger(Number num)
+    private static bool IsIntegerApprox(Number num)
     {
-      return Math.Abs(num.value % 1) < EPSILON;
+      return Math.Abs(num.value - Math.Round(num.value)) < EPSILON;
+    }
+
+    private static bool IsIntegerApprox(double num)
+    {
+      return Math.Abs(num - Math.Round(num)) < EPSILON;
+    }
+
+    private static bool EqualApprox(Number num, double expected)
+    {
+      return Math.Abs(num.value - expected) < EPSILON;
+    }
+
+    private bool FormatTree_Rec(ASTNode root, bool applyDecimalToRationalConversion)
+    {
+      // Format the children of the root
+      foreach (ASTNode child in root.Children)
+      {
+        if (FormatTree_Rec(child, applyDecimalToRationalConversion))
+          return true;
+      }
+
+      if (applyDecimalToRationalConversion)
+      {
+        if (root.IsConstant())
+          ConvertDecimalToRationnal(root);
+
+        return false;
+      }
+
+      else
+      {
+        if (root.Token.Type is Number num)
+        {
+          if (IsIntegerApprox((Number)root.Token.Type))
+          {
+            int intValue = (int)num.value;
+            root.Token = Token.Integer(intValue.ToString());
+          }
+
+          // Need to convert the whole tree to decimal
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    private void ConvertTreeToDecimal(ASTNode root)
+    {
+      if (root.IsFraction())
+      {
+        var frac = root.GetNumAndDenum();
+        var val = (double)frac[0] / (double)frac[1];
+        root.Token = Token.Number(val.ToString());
+        root.Children = new List<ASTNode>();
+        return;
+      }
+
+      // Recursively convert the nodes
+      foreach (ASTNode child in root.Children)
+        ConvertTreeToDecimal(child);
+
+      if (root.IsIntegerNum())
+      {
+        root.Token = Token.Number(root.Token.Type.stringValue);
+        return;
+      }
+    }
+
+    private void ConvertDecimalToRationnal(ASTNode number)
+    {
+      
     }
 
     private ASTNode SimplifyRNE_Rec(ASTNode input)
     {
-      if (input.Token.Type is IntegerNum)
+      if (input.IsIntegerNum())
         return input;
       else if (input.Token.Type is Fraction)
       {
@@ -502,7 +622,7 @@ namespace CAS.Core
       return new ASTNode(Token.Operator("^"), new() { powBase, frac });
     }
 
-    private List<ASTNode> SimplifyProductRec(List<ASTNode> operands)
+    private List<ASTNode> SimplifyProduct_Rec(List<ASTNode> operands)
     {
       // SPRDREC-1
       if (operands.Count == 2)
@@ -519,11 +639,17 @@ namespace CAS.Core
           // SPRDREC-1.1
           if (u1.IsConstant() && u2.IsConstant())
           {
-            var result = SimplifyRNE(new ASTNode(Token.Operator("*"), operands));
-            if (result.Token.Type.stringValue == "1")
-              return new List<ASTNode>();
+            if (u1.IsRational() && u2.IsRational())
+            {
+              var result = SimplifyRNE(new ASTNode(Token.Operator("*"), operands));
+              if (result.Token.Type.stringValue == "1")
+                return new List<ASTNode>();
 
-            return new List<ASTNode> { result };
+              return new List<ASTNode> { result };
+            }
+
+            var res = Calculator.Evaluate(new ASTNode(Token.Operator("*"), operands));
+            return new List<ASTNode> { new ASTNode(Token.Number(res.ToString())) };
           }
 
           // SPRDREC-1.2
@@ -571,14 +697,14 @@ namespace CAS.Core
       }
 
       // SPRDREC-3
-      var restSimplified = SimplifyProductRec(operands.GetRange(1, operands.Count() - 1));
+      var restSimplified = SimplifyProduct_Rec(operands.GetRange(1, operands.Count() - 1));
 
       if (operands[0].IsProduct())
         return MergeProducts(operands[0].Children, restSimplified);
       return MergeProducts(new List<ASTNode> { operands[0] }, restSimplified);
     }
 
-    private List<ASTNode> SimplifySumRec(List<ASTNode> operands)
+    private List<ASTNode> SimplifySum_Rec(List<ASTNode> operands)
     {
       // SSUMREC-1
       if (operands.Count == 2)
@@ -595,11 +721,17 @@ namespace CAS.Core
           // SSUMREC-1.1
           if (u1.IsConstant() && u2.IsConstant())
           {
-            var result = SimplifyRNE(new ASTNode(Token.Operator("+"), operands));
-            if (result.Token.Type.stringValue == "0")
-              return new List<ASTNode>();
+            if (u1.IsRational() && u2.IsRational())
+            {
+              var result = SimplifyRNE(new ASTNode(Token.Operator("+"), operands));
+              if (result.Token.Type.stringValue == "0")
+                return new List<ASTNode>();
 
-            return new List<ASTNode> { result };
+              return new List<ASTNode> { result };
+            }
+
+            var res = Calculator.Evaluate(new ASTNode(Token.Operator("+"), operands));
+            return new List<ASTNode> { new ASTNode(Token.Number(res.ToString())) };
           }
 
           // SSUMREC-1.2
@@ -657,7 +789,7 @@ namespace CAS.Core
       }
 
       // SPRDREC-3
-      var restSimplified = SimplifySumRec(operands.GetRange(1, operands.Count() - 1));
+      var restSimplified = SimplifySum_Rec(operands.GetRange(1, operands.Count() - 1));
 
       if (operands[0].IsSum())
         return MergeSums(operands[0].Children, restSimplified);
@@ -676,7 +808,7 @@ namespace CAS.Core
       // MPRD-3
       var p1 = p[0];
       var q1 = q[0];
-      var h = SimplifyProductRec(new List<ASTNode> { p1, q1 });
+      var h = SimplifyProduct_Rec(new List<ASTNode> { p1, q1 });
 
       // MPRD-3.1
       if (h.Count() == 0)
@@ -716,7 +848,7 @@ namespace CAS.Core
       // MPRD-3
       var p1 = p[0];
       var q1 = q[0];
-      var h = SimplifySumRec(new List<ASTNode> { p1, q1 });
+      var h = SimplifySum_Rec(new List<ASTNode> { p1, q1 });
 
       // MPRD-3.1
       if (h.Count() == 0)

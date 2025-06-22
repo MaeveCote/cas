@@ -30,121 +30,46 @@ namespace CAS.UT
     [Fact]
     public void FormatTree()
     {
-      var inside = new ASTNode(Token.Operator("*"), new List<ASTNode>
-          {
-              new ASTNode(Token.Number("6"), new List<ASTNode>()),
-              new ASTNode(Token.Number("3"), new List<ASTNode>())
-          });
+      var simplifier = new Simplifier();
 
-      var equation1 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      // Case 1: Should convert Number("3.0") to Integer("3")
+      var tree1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
       {
-          new ASTNode(Token.Operator("*"), new List<ASTNode>
-          {
-              new ASTNode(Token.Number("6"), new List<ASTNode>()),
-              new ASTNode(Token.Number("3"), new List<ASTNode>())
-          }),
-          new ASTNode(Token.Number("2"), new List<ASTNode>())
+        new ASTNode(Token.Number("3.0")),
+        new ASTNode(Token.Variable("x"))
       });
 
-      var equation2 = new ASTNode(Token.Operator("-"), new List<ASTNode>
+      var expected1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
       {
-        // Left: f(x^2 + 3) + g(sin(x) * ln(y))
-        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        new ASTNode(Token.Integer("3")),
+        new ASTNode(Token.Variable("x"))
+      });
+
+      simplifier.FormatTree(tree1);
+      Assert.True(tree1 == expected1);
+
+      // Case 2: Should convert everything to Number() because 3.5 is not an integer
+      var tree2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("3.5")),
+        new ASTNode(Token.Integer("2")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
         {
-          // f(x^2 + 3)
-          new ASTNode(Token.Function("f"), new List<ASTNode>
-          {
-            new ASTNode(Token.Operator("+"), new List<ASTNode>
-            {
-              new ASTNode(Token.Operator("^"), new List<ASTNode>
-              {
-                new ASTNode(Token.Variable("x"), new List<ASTNode>()),
-                new ASTNode(Token.Number("2"), new List<ASTNode>())
-              }),
-              new ASTNode(Token.Number("3"), new List<ASTNode>())
-            })
-          }),
-          // g(sin(x) * ln(y))
-          new ASTNode(Token.Function("g"), new List<ASTNode>
-          {
-            new ASTNode(Token.Operator("*"), new List<ASTNode>
-            {
-              new ASTNode(Token.Function("sin"), new List<ASTNode>
-              {
-                new ASTNode(Token.Variable("x"), new List<ASTNode>())
-              }),
-              new ASTNode(Token.Function("ln"), new List<ASTNode>
-              {
-                new ASTNode(Token.Variable("y"), new List<ASTNode>())
-              })
-            })
-          })
-        }),
-        // Right: 4 / (x + 1)
-        new ASTNode(Token.Operator("/"), new List<ASTNode>
-        {
-          new ASTNode(Token.Number("4"), new List<ASTNode>()),
-          new ASTNode(Token.Operator("+"), new List<ASTNode>
-          {
-            new ASTNode(Token.Variable("x"), new List<ASTNode>()),
-            new ASTNode(Token.Number("1"), new List<ASTNode>())
-          })
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
         })
       });
-      
-      var equation3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+
+      var expected2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
       {
-          new ASTNode(Token.Operator("+"), new List<ASTNode>
-          {
-              new ASTNode(Token.Operator("+"), new List<ASTNode>
-              {
-                  new ASTNode(Token.Operator("/"), new List<ASTNode>
-                  {
-                      new ASTNode(Token.Number("2"), new List<ASTNode>()),
-                      new ASTNode(Token.Number("3"), new List<ASTNode>())
-                  }),
-                  new ASTNode(Token.Operator("/"), new List<ASTNode>
-                  {
-                      new ASTNode(Token.Number("4"), new List<ASTNode>()),
-                      new ASTNode(Token.Number("5"), new List<ASTNode>())
-                  })
-              }),
-              new ASTNode(Token.Operator("/"), new List<ASTNode>
-              {
-                  new ASTNode(Token.Number("6"), new List<ASTNode>()),
-                  new ASTNode(Token.Number("7"), new List<ASTNode>())
-              })
-          }),
-          new ASTNode(Token.Number("3"), new List<ASTNode>())
+        new ASTNode(Token.Number("3.5")),
+        new ASTNode(Token.Number("2")),
+        new ASTNode(Token.Number("0.5")) // Assuming your simplifier formats 1/2 as 0.5 in Number fallback
       });
 
-      Dictionary<string, double> symbolTable = new Dictionary<string, double> { { "x", 1.75 }, { "y", 30 } };
-
-      var customFunctionTable = new Dictionary<string, Func<List<double>, double>>
-      {
-        { "f", (args) => (Math.Pow(args[0], 2) + 2 * args[0] + 3)},
-        { "g", (args) => (Math.Pow(Math.Sin(args[0]), 2) + Math.Cos(args[0]))},
-      };
-
-      Simplifier simplifier = new Simplifier();
-
-      simplifier.FormatTree(equation1);
-      simplifier.FormatTree(equation2);
-      simplifier.FormatTree(equation3);
-
-      Console.WriteLine(equation1.ToString());
-      Console.WriteLine(equation2.ToString());
-      Console.WriteLine(equation3.ToString());
-
-      var result1 = Calculator.Evaluate(equation1);
-      var result2 = Calculator.Evaluate(equation2, symbolTable, customFunctionTable);
-      var result3 = Calculator.Evaluate(equation3);
-
-      Assert.Equal(9, result1, 0.001);
-      Assert.Equal(49.481, result2, 0.01);
-      Assert.Equal(5.3238, result3, 0.01);
+      simplifier.FormatTree(tree2);
+      Assert.True(tree2 == expected2);
     }
-
     [Fact]
     public void SimplifyRationalNumber()
     {
@@ -857,5 +782,224 @@ namespace CAS.UT
       Assert.True(simplifier.AutomaticSimplify(expr4) == expected4);
     }
 
+    [Fact]
+    public void AutomaticSimplify_WithDecimalNumbers()
+    {
+      var simplifier = new Simplifier();
+
+      // Case 1: 2.0 + 3.0 => 5.0
+      var expr1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("2.0")),
+        new ASTNode(Token.Number("3.0"))
+      });
+      var expected1 = new ASTNode(Token.Number("5"));
+      Assert.True(simplifier.AutomaticSimplify(expr1) == expected1);
+
+      // Case 2: 6.0 * 2.5 => 15.0
+      var expr2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("6.0")),
+        new ASTNode(Token.Number("2.5"))
+      });
+      var expected2 = new ASTNode(Token.Number("15"));
+      Assert.True(simplifier.AutomaticSimplify(expr2) == expected2);
+
+      // Case 3: (4.0 + 1.0) * 2.0 => 10.0
+      var expr3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          new ASTNode(Token.Number("4.0")),
+          new ASTNode(Token.Number("1.0"))
+        }),
+        new ASTNode(Token.Number("2.0"))
+      });
+      var expected3 = new ASTNode(Token.Number("10"));
+      Assert.True(simplifier.AutomaticSimplify(expr3) == expected3);
+
+      // Case 4: 3.5 - 1.5 => 2.0
+      var expr4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("3.5")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Number("-1.0")),
+          new ASTNode(Token.Number("1.5"))
+        })
+      });
+      var expected4 = new ASTNode(Token.Number("2"));
+      Assert.True(simplifier.AutomaticSimplify(expr4) == expected4);
+
+      // Case 5: (2.0^0.37867) * x => 4.0 * x
+      var x = new ASTNode(Token.Variable("x"));
+      var expr5 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Number("2.0")),
+          new ASTNode(Token.Number("0.37867"))
+        }),
+        x
+      });
+      var expected5 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("1.3001427197473157")),
+        x
+      });
+      Assert.True(simplifier.AutomaticSimplify(expr5) == expected5);
+    }
+
+    [Fact]
+    public void AutomaticSimplify_SimplifyFunctions()
+    {
+      var simplifier = new Simplifier(true, false); // SIMPLIFIER_EVAL_FUNCTIONS = true, USE_RADIANS = false
+
+      // sin(30) => 1/2
+      var sin30 = new ASTNode(Token.Function("sin"), new()
+      {
+        new ASTNode(Token.Number("30.0"))
+      });
+      var expectedSin30 = new ASTNode(Token.Fraction(), new()
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Integer("2"))
+      });
+      Assert.True(simplifier.AutomaticSimplify(sin30) == expectedSin30);
+
+      // cos(60) => 1/2
+      var cos60 = new ASTNode(Token.Function("cos"), new()
+      {
+        new ASTNode(Token.Number("60.0"))
+      });
+      var expectedCos60 = new ASTNode(Token.Fraction(), new()
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Integer("2"))
+      });
+      Assert.True(simplifier.AutomaticSimplify(cos60) == expectedCos60);
+
+      // tan(90) => Undefined
+      var tan90 = new ASTNode(Token.Function("tan"), new()
+      {
+        new ASTNode(Token.Number("90.0"))
+      });
+      Assert.True(simplifier.AutomaticSimplify(tan90).Token.Type is Undefined);
+
+      // log(1000) => 3
+      var log1000 = new ASTNode(Token.Function("log"), new()
+      {
+        new ASTNode(Token.Number("1000.0"))
+      });
+      var expectedLog = new ASTNode(Token.Integer("3"));
+      Assert.True(simplifier.AutomaticSimplify(log1000) == expectedLog);
+
+      // ln(e=2.718281828) => 1 approx
+      var lnE = new ASTNode(Token.Function("ln"), new()
+      {
+        new ASTNode(Token.Number("2.718281828"))
+      });
+      var expectedLn = new ASTNode(Token.Integer("1")); // approximate to 1
+      Assert.True(simplifier.AutomaticSimplify(lnE) == expectedLn);
+
+      // min(3, 2) => 2 via Calculator.Evaluate
+      var minNode = new ASTNode(Token.Function("min"), new()
+      {
+        new ASTNode(Token.Number("3.0")),
+        new ASTNode(Token.Number("2.0"))
+      });
+      var expectedMin = new ASTNode(Token.Number("2")); // Calculator should return 2
+      Assert.True(simplifier.AutomaticSimplify(minNode) == expectedMin);
+    }
+
+    [Fact]
+    public void AutomaticSimplify_EveryConcepts()
+    {
+      var simplifier = new Simplifier(true, false); // Eval functions, degrees
+
+      var x = new ASTNode(Token.Variable("x"));
+      var y = new ASTNode(Token.Variable("y"));
+
+      // === Equation 1 ===
+      // (sin(30) + log(1000)) * (x^0 + tan(45))^1  =>  (1/2 + 3) * (1 + 1) => 3.5 * 2 => 7
+      var expr1 = new ASTNode(Token.Operator("*"), new()
+      {
+        new ASTNode(Token.Operator("+"), new()
+        {
+          new ASTNode(Token.Function("sin"), new() { new ASTNode(Token.Number("30")) }),
+          new ASTNode(Token.Function("log"), new() { new ASTNode(Token.Number("1000")) })
+        }),
+        new ASTNode(Token.Operator("^"), new()
+        {
+          new ASTNode(Token.Operator("+"), new()
+          {
+            new ASTNode(Token.Operator("^"), new()
+            {
+              x,
+              new ASTNode(Token.Integer("0"))
+            }),
+            new ASTNode(Token.Function("tan"), new() { new ASTNode(Token.Number("45")) })
+          }),
+          new ASTNode(Token.Integer("1"))
+        })
+      });
+
+      var expected1 = new ASTNode(Token.Integer("7"));
+      Assert.True(simplifier.AutomaticSimplify(expr1) == expected1);
+
+
+      // === Equation 2 ===
+      // ((x^2)^1/2 * cos(60) + ln(2.718281828)) / min(3, 2) => x * 1/2 + 1 => (x/2 + 1) / 2
+      var expr2 = new ASTNode(Token.Operator("/"), new()
+      {
+        new ASTNode(Token.Operator("+"), new()
+        {
+          new ASTNode(Token.Operator("*"), new()
+          {
+            new ASTNode(Token.Operator("^"), new()
+            {
+              new ASTNode(Token.Operator("^"), new()
+              {
+                x,
+                new ASTNode(Token.Integer("2"))
+              }),
+              new ASTNode(Token.Fraction(), new()
+              {
+                new ASTNode(Token.Integer("1")),
+                new ASTNode(Token.Integer("2"))
+              })
+            }),
+            new ASTNode(Token.Function("cos"), new() { new ASTNode(Token.Number("60")) })
+          }),
+          new ASTNode(Token.Function("ln"), new() { new ASTNode(Token.Number("2.718281828")) })
+        }),
+        new ASTNode(Token.Function("min"), new()
+        {
+          new ASTNode(Token.Number("3")),
+          new ASTNode(Token.Number("2"))
+        })
+      });
+
+      var expected2 = new ASTNode(Token.Operator("*"), new()
+      {
+        new ASTNode(Token.Operator("+"), new()
+        {
+          new ASTNode(Token.Operator("*"), new()
+          {     
+            new ASTNode(Token.Fraction(), new()
+            {
+              new ASTNode(Token.Integer("1")),
+              new ASTNode(Token.Integer("2"))
+            }),
+            x
+          }),
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Number("0.5"))
+      });
+
+      var res = simplifier.AutomaticSimplify(expr2);
+      Assert.True(simplifier.AutomaticSimplify(expr2) == expected2);
+    }
   }
 }

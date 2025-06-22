@@ -292,6 +292,30 @@ namespace CAS.Core.EquationParsing
       return false;
     }
 
+    /// <summary>
+    /// Converts a rational number node to an array numerator and denumerator.
+    /// </summary>
+    /// <returns>Int array of [numerator, denumerator]</returns>
+    /// <exception cref="ArgumentException">The given node is not a rational number</exception>
+    public int[] GetNumAndDenum()
+    {
+      int[] frac = new int[2];
+      if (this.Token.Type is IntegerNum nodeInt)
+      {
+        frac[0] = nodeInt.intVal;
+        frac[1] = 1;
+      }
+      else if (this.Token.Type is Fraction)
+      {
+        frac[0] = ((IntegerNum)this.OperandAt(0).Token.Type).intVal;
+        frac[1] = ((IntegerNum)this.OperandAt(1).Token.Type).intVal;
+      }
+      else
+        throw new ArgumentException("The 'node' should be a rationnal number");
+
+      return frac;
+    }
+
     #endregion
 
     #region Standard operators
@@ -319,6 +343,10 @@ namespace CAS.Core.EquationParsing
     #region Type Checks
 
     public bool IsConstant() => Token.Type is Number || Token.Type is Fraction;
+    public bool IsRational() => Token.Type is IntegerNum || Token.Type is Fraction;
+    public bool IsNumber() => Token.Type is Number;
+    public bool IsIntegerNum() => Token.Type is IntegerNum;
+    public bool IsFraction() => Token.Type is Fraction;
     public bool IsSymbol() => Token.Type is Variable;
     public bool IsPower() => Token.Type.stringValue == "^";
     public bool IsProduct() => Token.Type.stringValue == "*";
@@ -334,6 +362,7 @@ namespace CAS.Core.EquationParsing
     }
  
     #endregion
+
     public override bool Equals(object obj)
     {
       if (obj is not ASTNode other)
