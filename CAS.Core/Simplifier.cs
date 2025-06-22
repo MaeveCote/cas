@@ -388,6 +388,21 @@ namespace CAS.Core
       return input;
     }
 
+    /// <summary>
+    /// Expands the mutiplications and powers of the tree rooted at input and applies <see cref="Simplifier.AutomaticSimplify(ASTNode)"/> after.
+    /// </summary>
+    /// <remarks>This algorithm is in place but will work with a copy of the input.</remarks>
+    /// <param name="input">The root of the tree to expand.</param>
+    public ASTNode Expand(ASTNode input)
+    {
+      // Create a copy of the tree and perform the expand algorithm.
+      var root = new ASTNode(input);
+      ExpandInPlace(root);
+
+      // Simplify the resulting tree.
+      return AutomaticSimplify(root);
+    }
+
     #region Private methods
 
     private static bool IsIntegerApprox(Number num)
@@ -937,6 +952,48 @@ namespace CAS.Core
       var mergeRes = MergeSums(p, q.GetRange(1, q.Count() - 1));
       mergeRes.Insert(0, q1);
       return mergeRes;
+    }
+
+    private void ExpandInPlace(ASTNode root)
+    {
+      // Expand the children
+      foreach (ASTNode child in root.Children)
+        ExpandInPlace(child);
+
+      // Expand this node.
+      if (root.IsProduct())
+        ExpandProduct(root);
+      if (root.IsPower())
+        ExpandPower(root);
+    }
+    
+    private void ExpandProduct(ASTNode root)
+    {
+      // return if unary
+      // Find an addtion in there
+      // Create an addition with the #product = #children of addition
+      //  The products are one element from the addition and all the other child of the original product
+      // Apply ExpandProduct recursively on this new product
+    }
+
+    private void ExpandPower(ASTNode root)
+    {
+      var powBase = root.Children[0];
+      var powExp = root.Children[1];
+
+      if (powExp.Token.Type is IntegerNum intNum && intNum.intVal > 0 &&
+        (powBase.Kind() == "+" || powBase.Kind() == "-"))
+      {
+        // Create a product of 'intNum' times the base.
+        var newChildren = new List<ASTNode>();
+        for (int i = 0; i < intNum.intVal; i++)
+          newChildren.Add(new ASTNode(powBase));
+
+        root.Token = Token.Operator("*");
+        root.Children = newChildren;
+
+        ExpandProduct(root);
+      }
     }
 
     #endregion
