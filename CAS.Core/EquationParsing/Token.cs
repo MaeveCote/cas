@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,6 +35,23 @@ namespace CAS.Core.EquationParsing
     public static Token RightParenthesis() => new(new RightParenthesis());
     public static Token Undefined() => new(new Undefined());
 
+    public override bool Equals([NotNullWhen(true)] object? obj)
+    {
+      if (obj is Token tok)
+      {
+        if (tok.Type is Number && Type is Number)
+          return true;
+        if (tok.Type is Variable && Type is Variable)
+          return true;
+        if (tok.Type is Function && Type is Function)
+          return true;
+        // Applys for other operators, parentheses, undefined, fractions and functionArgumentSeparaors
+        if (tok.Type.stringValue == tok.Type.stringValue)
+          return true;
+      }
+
+      return false;
+    }
     public override string ToString()
     {
       return Type.ToString();

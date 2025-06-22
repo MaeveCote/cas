@@ -10,7 +10,7 @@ namespace CAS.Core.EquationParsing
   // Interesting to Add:
   //  -Support for symbol notation using the '\' character
   //  -Support for complex operations like derivatives, integrals, summations, etc...
-  //  -Find a way to support arbitrary number of arguments in function.
+  //  -Add the factorial (!) operation.
 
   /// <summary>
   /// Tokenizes a mathematical expression before converting it to an abstract synthax tree (AST).

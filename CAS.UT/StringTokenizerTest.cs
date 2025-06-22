@@ -151,6 +151,32 @@ namespace CAS.UT
       Assert.Equal("Function('f')LeftParenthesis('(')Function('g')LeftParenthesis('(')Variable('x')RightParenthesis(')')Operator('+')Function('h')LeftParenthesis('(')Variable('y')RightParenthesis(')')RightParenthesis(')')", s3);
       AssertSetEqual(expectedSymbols3, result3.Symbols);
     }
+
+    [Fact]
+    public void UnaryMinus()
+    {
+      var result1 = StringTokenizer.Tokenize("-3");
+      var result2 = StringTokenizer.Tokenize("-5x + 4");
+      var result3 = StringTokenizer.Tokenize("8 + (-9 + sin(x))");
+
+      string s1 = TokenListToTestString(result1.TokenizedExpression);
+      string s2 = TokenListToTestString(result2.TokenizedExpression);
+      string s3 = TokenListToTestString(result3.TokenizedExpression);
+
+      var expectedSymbols1 = new HashSet<string>();
+      var expectedSymbols2 = new HashSet<string> { "x" };
+      var expectedSymbols3 = new HashSet<string> { "x" };
+
+      Assert.Equal("Number(-1)Operator('*')Number(3)", s1);
+      AssertSetEqual(expectedSymbols1, result1.Symbols);
+
+      Assert.Equal("Number(-1)Operator('*')Number(5)Operator('*')Variable('x')Operator('+')Number(4)", s2);
+      AssertSetEqual(expectedSymbols2, result2.Symbols);
+
+      Assert.Equal("Number(8)Operator('+')LeftParenthesis('(')Number(-1)Operator('*')Number(9)Operator('+')Function('sin')LeftParenthesis('(')Variable('x')RightParenthesis(')')RightParenthesis(')')", s3);
+      AssertSetEqual(expectedSymbols3, result3.Symbols);
+    }
+
     [Fact]
     public void InvalidExpressions()
     {
