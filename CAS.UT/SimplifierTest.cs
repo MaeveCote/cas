@@ -64,7 +64,7 @@ namespace CAS.UT
       {
         new ASTNode(Token.Number("3.5")),
         new ASTNode(Token.Number("2")),
-        new ASTNode(Token.Number("0.5")) // Assuming your simplifier formats 1/2 as 0.5 in Number fallback
+        new ASTNode(Token.Number("0.5")) 
       });
 
       simplifier.FormatTree(tree2);
@@ -1095,6 +1095,108 @@ namespace CAS.UT
 
       var res = simplifier.AutomaticSimplify(expr2);
       Assert.True(simplifier.AutomaticSimplify(expr2) == expected2);
+    }
+
+    [Fact]
+    public void Expand_SimplifyProducts()
+    {
+      var simplifier = new Simplifier();
+
+      var x = new ASTNode(Token.Variable("x"));
+
+      // Case 1: 2 * (x + 3) => 2x + 6
+      var expr1 = new ASTNode(Token.Operator("*"), new()
+      {
+        new ASTNode(Token.Integer("2")),
+        new ASTNode(Token.Operator("+"), new()
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        })
+      });
+
+      var expected1 = new ASTNode(Token.Operator("+"), new()
+      {
+        new ASTNode(Token.Integer("6")),
+        new ASTNode(Token.Operator("*"), new() { new ASTNode(Token.Integer("2")), x })
+      });
+
+      Assert.True(simplifier.Expand(expr1) == expected1);
+
+      // Case 2: (x + 1)(x - 1) => x^2 - 1
+      var expr2 = new ASTNode(Token.Operator("*"), new()
+      {
+        new ASTNode(Token.Operator("+"), new()
+        {
+          x,
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Operator("+"), new()
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        })
+      });
+
+      var expected2 = new ASTNode(Token.Operator("+"), new()
+      {
+        new ASTNode(Token.Operator("^"), new() { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Integer("-1"))
+      });
+
+      var res = simplifier.Expand(expr2);
+      Assert.True(simplifier.Expand(expr2) == expected2);
+    }
+
+    [Fact]
+    public void Expand_SimplifyPowers()
+    {
+      var simplifier = new Simplifier();
+
+      var x = new ASTNode(Token.Variable("x"));
+
+      // Case 1: (x + 1)^2 => x^2 + 2x + 1
+      var expr1 = new ASTNode(Token.Operator("^"), new()
+      {
+        new ASTNode(Token.Operator("+"), new()
+        {
+          x,
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Integer("2"))
+      });
+
+      var expected1 = new ASTNode(Token.Operator("+"), new()
+      {
+        new ASTNode(Token.Operator("^"), new() { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new() { new ASTNode(Token.Integer("2")), x }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      Assert.True(simplifier.Expand(expr1) == expected1);
+
+      // Case 2: (x + 1)^5 => x^5 + 5x^4 + 10x^3 + 10x^2 + 5x + 1
+      var expr2 = new ASTNode(Token.Operator("^"), new()
+      {
+        new ASTNode(Token.Operator("+"), new()
+        {
+          x,
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Integer("5"))
+      });
+
+      var expected2 = new ASTNode(Token.Operator("+"), new()
+      {
+        new ASTNode(Token.Operator("^"), new() { x, new ASTNode(Token.Integer("5")) }),
+        new ASTNode(Token.Operator("*"), new() { new ASTNode(Token.Integer("5")), new ASTNode(Token.Operator("^"), new() { x, new ASTNode(Token.Integer("4")) }) }),
+        new ASTNode(Token.Operator("*"), new() { new ASTNode(Token.Integer("10")), new ASTNode(Token.Operator("^"), new() { x, new ASTNode(Token.Integer("3")) }) }),
+        new ASTNode(Token.Operator("*"), new() { new ASTNode(Token.Integer("10")), new ASTNode(Token.Operator("^"), new() { x, new ASTNode(Token.Integer("2")) }) }),
+        new ASTNode(Token.Operator("*"), new() { new ASTNode(Token.Integer("5")), x }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      Assert.True(simplifier.Expand(expr2) == expected2);
     }
   }
 }
