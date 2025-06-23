@@ -395,12 +395,45 @@ namespace CAS.Core
     /// <param name="input">The root of the tree to expand.</param>
     public ASTNode Expand(ASTNode input)
     {
-      // Create a copy of the tree and perform the expand algorithm.
-      var root = new ASTNode(input);
+      // Create a copy and remove differences before expanding
+      var root = new ASTNode(RemoveDifferences(input));
       ExpandInPlace(root);
 
       // Simplify the resulting tree.
       return AutomaticSimplify(root);
+    }
+
+    /// <summary>
+    /// Implements the SimplifyDifference of AutomaticSimplify only, on the whole tree./
+    /// </summary>
+    /// <param name="input"></param>
+    /// <returns></returns>
+    public ASTNode RemoveDifferences(ASTNode input)
+    {
+      // Simplify the nodes recursively
+      for (int i = 0; i < input.Children.Count(); i++)
+        input.Children[i] = RemoveDifferences(input.Children[i]);
+
+      if (input.Kind() == "-")
+        return SimplifyDifference(input);
+
+      return input;
+    }
+
+    /// <summary>
+    /// Implements the SimplifyQuotient of AutomaticSimplify only, on the whole tree.
+    /// </summary>
+    /// <returns>A tree without differences.</returns>
+    public ASTNode RemoveQuotients(ASTNode input)
+    {
+      // Simplify the nodes recursively
+      for (int i = 0; i < input.Children.Count(); i++)
+        input.Children[i] = RemoveQuotients(input.Children[i]);
+
+      if (input.Kind() == "/")
+        return RemoveQuotients(input);
+
+      return input;
     }
 
     #region Private methods
@@ -828,7 +861,7 @@ namespace CAS.Core
             var combinedConst = SimplifyRNE(new ASTNode(Token.Operator("+"), new() { const1, const2 }));
 
             if (combinedConst.Token.Type.stringValue == "0")
-              return new List<ASTNode> { new ASTNode(Token.Integer("0"), new List<ASTNode>()) };
+              return new List<ASTNode>();
 
             var terms = u1.Terms();
             if (combinedConst.Token.Type.stringValue == "1")
@@ -969,11 +1002,44 @@ namespace CAS.Core
     
     private void ExpandProduct(ASTNode root)
     {
-      // return if unary
-      // Find an addtion in there
-      // Create an addition with the #product = #children of addition
-      //  The products are one element from the addition and all the other child of the original product
-      // Apply ExpandProduct recursively on this new product
+      // Return if a unary product
+      if (root.Children.Count() == 1)
+      {
+        root.Token = root.Children[0].Token;
+        root.Children = root.Children[0].Children;
+        return;
+      }
+
+      // Find if there is an addtion, otherwise do nothing
+      for (int i = 0; i < root.Children.Count(); i++)
+      {
+        if (root.Children[i].IsSum())
+        {
+          // Create new addition
+          ASTNode subAddition = new ASTNode(Token.Operator("+"));
+
+          // Add a product for each sub operand in the addition
+          foreach (ASTNode operand in root.Children[i].Children)
+          {
+            ASTNode subProduct = new ASTNode(Token.Operator("*"), new List<ASTNode> { operand });
+            for (int j = 0; j < root.Children.Count; j++)
+            {
+              // Add the other operand other than this addition
+              if (j == i) continue;
+              subProduct.Children.Add(new ASTNode(root.Children[j]));
+            }
+
+            // Expand the new product
+            ExpandProduct(subProduct);
+
+            subAddition.Children.Add(subProduct);
+          }
+
+          // Set the addition to the previous product
+          root.Children = new List<ASTNode> { subAddition };
+          return;
+        }
+      }
     }
 
     private void ExpandPower(ASTNode root)
