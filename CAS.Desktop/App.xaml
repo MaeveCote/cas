@@ -1,9 +1,31 @@
-﻿<Application x:Class="CAS.Desktop.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:CAS.Desktop"
-             StartupUri="MainWindow.xaml">
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="CAS.Desktop.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:CAS.Desktop">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Other merged dictionaries here -->
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Other app resources here -->
+            <!-- Catppuccin Colors -->
+            <Color x:Key="Base">#1e1e2e</Color>
+            <Color x:Key="Surface0">#313244</Color>
+            <Color x:Key="Surface1">#45475a</Color>
+            <Color x:Key="Text">#cdd6f4</Color>
+            <Color x:Key="Subtext0">#a6adc8</Color>
+            <Color x:Key="Accent">#89b4fa</Color>
+
+            <!-- SolidColorBrushes -->
+            <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource Base}"/>
+            <SolidColorBrush x:Key="CardBrush" Color="{StaticResource Surface0}"/>
+            <SolidColorBrush x:Key="Surface1Brush" Color="{StaticResource Surface1}"/>
+            <SolidColorBrush x:Key="TextBrush" Color="{StaticResource Text}"/>
+            <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource Subtext0}"/>
+            <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
