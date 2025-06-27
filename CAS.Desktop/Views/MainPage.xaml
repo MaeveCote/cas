@@ -27,40 +27,51 @@
         <Grid Grid.ColumnSpan="3"
           Background="{ThemeResource Surface1}" Padding="10">
             <TextBlock Text="Computer Algebra System"
-                   FontWeight="Bold"
-                   Foreground="{ThemeResource TextBrush}"
-                   VerticalAlignment="Center"/>
+                FontWeight="Bold"
+                Foreground="{ThemeResource TextBrush}"
+                VerticalAlignment="Center"/>
         </Grid>
 
         <!-- Sidebar -->
-        <StackPanel x:Name="ModePanel" Grid.Row="1" Grid.Column="0"
+        <StackPanel x:Name="ActionPanel" Grid.Row="1" Grid.Column="0"
                 Background="{ThemeResource CardBrush}" Padding="10">
-            <TextBlock Text="Modes"
-                   FontWeight="Bold"
-                   Margin="0,0,0,10"
-                   Foreground="{ThemeResource SubtextBrush}"/>
+            <TextBlock Text="Actions"
+                FontWeight="Bold"
+                Margin="0,0,0,10"
+                Foreground="{ThemeResource SubtextBrush}"/>
+            <ToggleButton x:Name="EvalToggle"
+                Content="Eval"
+                Click="ModeToggle_Click"
+                Margin="0,0,0,10"
+                Padding="12,6"
+                FontSize="16"
+                MinWidth="120"
+                Background="{ThemeResource Surface1}"
+                Foreground="{ThemeResource TextBrush}"/>
+
             <ToggleButton x:Name="SimplifyToggle"
                 Content="Simplify"
                 Click="ModeToggle_Click"
                 Margin="0,0,0,10"
+                Padding="12,6"
+                FontSize="16"
+                MinWidth="120"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
+
             <ToggleButton x:Name="ExpandToggle"
                 Content="Expand"
-                Margin="0,0,0,10"
                 Click="ModeToggle_Click"
+                Margin="0,0,0,10"
+                Padding="12,6"
+                FontSize="16"
+                MinWidth="120"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
-            <!-- Icons -->
-            <StackPanel Margin="0,10,0,0">
-                <TextBlock Text="🧮" Foreground="{ThemeResource TextBrush}"/>
-                <TextBlock Text="📝" Foreground="{ThemeResource TextBrush}"/>
-                <TextBlock Text="⚙️" Foreground="{ThemeResource TextBrush}"/>
-            </StackPanel>
         </StackPanel>
 
         <!-- Main UI -->
-        <StackPanel Grid.Row="1" Grid.Column="1" Padding="10" Spacing="10">
+        <StackPanel Grid.Row="1" Grid.Column="1" Padding="10" Spacing="20">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -68,32 +79,35 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBox x:Name="InputTextBox"
-                     PlaceholderText="Text entry..."
-                     Margin="0,0,10,0"
-                     Background="{ThemeResource CardBrush}"
-                     Foreground="{ThemeResource TextBrush}"/>
+                    PlaceholderText="Text entry..."
+                    Margin="0,0,10,0"
+                    Background="{ThemeResource CardBrush}"
+                    Foreground="{ThemeResource TextBrush}"
+                    TextChanged="RenderInputLaTeX"/>
 
-                <Button Content="Run"
+                <Button Content="Run" Click="RunAction"
                     Grid.Column="1"
                     Background="{ThemeResource AccentBrush}"
                     Foreground="Black"/>
             </Grid>
 
-            <Border BorderBrush="{ThemeResource Surface1}"
-                BorderThickness="1"
-                Background="{ThemeResource CardBrush}"
-                Padding="10">
-                <TextBlock Text="LaTeX Expression Render Input"
-                       Foreground="{ThemeResource TextBrush}"/>
-            </Border>
+            <TextBlock Text="Rendered Input LaTeX" Foreground="{ThemeResource TextBrush}"/>
+            <WebView2 x:Name="InputWebView"
+                DefaultBackgroundColor="#1e1e2e"
+                Height="150"
+                Margin="0,10"
+                />
 
-            <Border BorderBrush="{ThemeResource Surface1}"
-                BorderThickness="1"
-                Background="{ThemeResource CardBrush}"
-                Padding="10">
-                <TextBlock Text="LaTeX Expression Render Result"
-                       Foreground="{ThemeResource TextBrush}"/>
-            </Border>
+            <Rectangle Height="1"
+                Fill="{ThemeResource Surface1Brush}"
+                Margin="0,10"/>
+
+            <TextBlock Text="Rendered Output LaTeX" Foreground="{ThemeResource TextBrush}"/>
+            <WebView2 x:Name="OutputWebView"
+                DefaultBackgroundColor="#1e1e2e"
+                Height="150"
+                Margin="0,10"
+                />
         </StackPanel>
 
         <!-- Variable Panel -->
@@ -112,7 +126,7 @@
                  Background="{ThemeResource Surface1}"
                  Foreground="{ThemeResource TextBrush}"/>
                 <TextBox x:Name="VarValueBox"
-                 Width="80"
+                 Width="70"
                  PlaceholderText="Value"
                  Background="{ThemeResource Surface1}"
                  Foreground="{ThemeResource TextBrush}"/>
