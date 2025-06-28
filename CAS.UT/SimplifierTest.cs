@@ -74,7 +74,7 @@ namespace CAS.UT
     [Fact]
     public void FormatTree_ConvertAllDecimalsToFractions()
     {
-      var simplifier = new Simplifier();
+      var simplifier = new Simplifier(false, false, true);
 
       var tree = new ASTNode(Token.Operator("+"), new List<ASTNode>
       {
@@ -161,7 +161,7 @@ namespace CAS.UT
         })
       });
 
-      simplifier.FormatTree(tree, true);
+      simplifier.FormatTree(tree);
       Assert.True(tree == expected);
     }
 
@@ -665,7 +665,7 @@ namespace CAS.UT
 
       // --- CASE 1: Deeply nested sum and product ---
       // ((((x + x) + (x + x)) + ((2 * x) + (3 * x))) + (((x ^ 2) + (2 * x ^ 2)) + (x + (x + x))))
-      // Expected: 5x^2 + 10x
+      // Expected: 12x + 3x^2
       var expr1 = new ASTNode(Token.Operator("+"), new()
       {
         new ASTNode(Token.Operator("+"), new()

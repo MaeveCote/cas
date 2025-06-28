@@ -73,6 +73,8 @@ namespace CAS.Core.EquationParsing
             for (int i = 0; i < ((Function)func.Type).numberOfArguments; i++)
               args.Add(output.Pop());
 
+            args.Reverse();
+
             output.Push(new ASTNode(func, args));
           }
         }

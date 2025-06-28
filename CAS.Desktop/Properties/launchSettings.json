@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "CAS.Desktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "CAS.Desktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

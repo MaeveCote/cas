@@ -28,6 +28,7 @@ namespace CAS.Core
     // Fields
     private bool SIMPLIFIER_EVAL_FUNCTIONS;
     private bool USE_RADIANS;
+    private bool APPLY_DECIMAL_2_RATIONAL_CONVERSION;
 
 
     /// <summary>
@@ -35,11 +36,16 @@ namespace CAS.Core
     /// </summary>
     /// <param name="simplifierEvalFunctions">Apply function evaluation if possible when simplifyina.</param>
     /// <param name="useRadians">Use radians in trigonometric simplifying.</param>
-    public Simplifier(bool simplifierEvalFunctions = false, bool useRadians = false)
+    public Simplifier(bool simplifierEvalFunctions = false, bool useRadians = false, bool applyDecimalToRationalConversion = false)
     {
       SIMPLIFIER_EVAL_FUNCTIONS = simplifierEvalFunctions;
       USE_RADIANS = useRadians;
+      APPLY_DECIMAL_2_RATIONAL_CONVERSION = applyDecimalToRationalConversion;
     }
+
+    public void SetSimplifierEvalFunctions(bool val) => SIMPLIFIER_EVAL_FUNCTIONS = val;
+    public void SetUseRadians(bool val) => USE_RADIANS = val;
+    public void SetApplyDecimal2RationnalConverstion(bool val) => APPLY_DECIMAL_2_RATIONAL_CONVERSION = val;
 
     /// <summary>
     /// Will make a tree entirely made of rational numbers or decimal numbers. If there is a single decimal number, it will convert the whole tree to decimals.
@@ -48,9 +54,9 @@ namespace CAS.Core
     /// <remarks>This should be applied after building the AST.</remarks>
     /// <param name="root">The root of the tree.</param>
     /// <param name="applyDecimalToRationalConversion">Wheter to apply the algorithm to approximately convert decimals to fractions.</param>
-    public void FormatTree(ASTNode root, bool applyDecimalToRationalConversion = false)
+    public void FormatTree(ASTNode root)
     {
-      bool convertToDecimal = FormatTree_Rec(root, applyDecimalToRationalConversion);
+      bool convertToDecimal = FormatTree_Rec(root, APPLY_DECIMAL_2_RATIONAL_CONVERSION);
 
       if (convertToDecimal)
       {
@@ -482,6 +488,7 @@ namespace CAS.Core
           {
             int intValue = (int)num.value;
             root.Token = Token.Integer(intValue.ToString());
+            return false;
           }
 
           // Need to convert the whole tree to decimal
