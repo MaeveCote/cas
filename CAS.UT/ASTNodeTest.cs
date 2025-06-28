@@ -406,5 +406,80 @@ namespace CAS.UT
       // 11. Constant vs product → not alike
       Assert.False(ASTNode.AreLikeTerms(Int("2"), Mul(Int("2"), Var("x"))));
     }
+
+    [Fact]
+    public void ToLatex()
+    {
+      // Variable
+      var x = new ASTNode(Token.Variable("x"));
+      Assert.Equal("x", x.ToLatex());
+
+      // Simple sum: x + 1
+      var sum = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("1"))
+      });
+      Assert.Equal("x + 1", sum.ToLatex());
+
+      // Product: 2 * x
+      var product = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("2")),
+        x
+      });
+      Assert.Equal("2x", product.ToLatex());
+
+      // Fraction: 1/2
+      var frac = new ASTNode(Token.Fraction(), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Integer("2"))
+      });
+      Assert.Equal("\\frac{1}{2}", frac.ToLatex());
+
+      // Power: (x + 1)^2
+      var power = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        sum,
+        new ASTNode(Token.Integer("2"))
+      });
+      Assert.Equal("\\left(x + 1\\right)^{2}", power.ToLatex());
+
+      // Nested function: sin(x)
+      var sin = new ASTNode(Token.Function("sin"), new List<ASTNode> { x });
+      Assert.Equal("sin\\left(x\\right)", sin.ToLatex());
+
+      // Nested fraction and power: (x^2)/(x+1)
+      var frac2 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        sum
+      });
+      Assert.Equal("\\frac{x^{2}}{x + 1}", frac2.ToLatex());
+
+      // More complex expression: sin(x)^2 + cos(x)^2
+      var sin2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        sin,
+        new ASTNode(Token.Integer("2"))
+      });
+      var cos = new ASTNode(Token.Function("cos"), new List<ASTNode> { x });
+      var cos2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        cos,
+        new ASTNode(Token.Integer("2"))
+      });
+      var identity = new ASTNode(Token.Operator("+"), new List<ASTNode> { sin2, cos2 });
+      Assert.Equal("sin\\left(x\\right)^{2} + cos\\left(x\\right)^{2}", identity.ToLatex());
+
+      // Negative unary: -x
+      var neg = new ASTNode(Token.Operator("-"), new List<ASTNode> { x });
+      Assert.Equal("-x", neg.ToLatex());
+    }
   }
 }

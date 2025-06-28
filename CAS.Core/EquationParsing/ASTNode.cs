@@ -577,5 +577,95 @@ namespace CAS.Core.EquationParsing
 
       return result;
     }
+
+
+    public string ToLatex()
+    {
+      // Helper: wrap in parentheses if child is sum or product
+      string WrapIfNeeded(ASTNode child)
+      {
+        if (child.IsSum() || child.IsProduct())
+          return $"\\left({child.ToLatex()}\\right)";
+        return child.ToLatex();
+      }
+
+      if (Token.Type is IntegerNum intNum)
+      {
+        return intNum.stringValue;
+      }
+      if (Token.Type is Number num)
+      {
+        return num.stringValue;
+      }
+      if (Token.Type is Variable var)
+      {
+        return var.stringValue;
+      }
+      if (Token.Type is Fraction)
+      {
+        var numerator = Children[0].ToLatex();
+        var denominator = Children[1].ToLatex();
+        return $"\\frac{{{numerator}}}{{{denominator}}}";
+      }
+      if (IsFunction())
+      {
+        var args = string.Join(", ", Children.Select(c => c.ToLatex()));
+        return $"{Token.Type.stringValue}\\left({args}\\right)";
+      }
+      if (Token.Type is Operator op)
+      {
+        if (op.stringValue == "-")
+        {
+          if (Children.Count == 1)
+            return $"-{Children[0].ToLatex()}";
+          else
+            return $"{Children[0].ToLatex()} - {Children[1].ToLatex()}";
+        }
+        if (op.stringValue == "+")
+        {
+          return string.Join(" + ", Children.Select(c => c.ToLatex()));
+        }
+        if (op.stringValue == "*")
+        {
+          var parts = new List<string>();
+
+          for (int i = 0; i < Children.Count; i++)
+          {
+            var current = Children[i];
+            var latex = WrapIfNeeded(current);
+
+            if (i > 0)
+            {
+              var prev = Children[i - 1];
+
+              // If both previous and current are constants (Number or IntegerNum), insert \cdot
+              if ((prev.Token.Type is Number || prev.Token.Type is IntegerNum) &&
+                  (current.Token.Type is Number || current.Token.Type is IntegerNum))
+              {
+                parts.Add(" \\cdot ");
+              }
+            }
+
+            parts.Add(latex);
+          }
+
+          return string.Join("", parts);
+        }
+        if (op.stringValue == "/")
+        {
+          var numerator = Children[0].ToLatex();
+          var denominator = Children[1].ToLatex();
+          return $"\\frac{{{numerator}}}{{{denominator}}}";
+        }
+        if (op.stringValue == "^")
+        {
+          var baseExpr = WrapIfNeeded(Children[0]);
+          var exponentExpr = Children[1].ToLatex();
+          return $"{baseExpr}^{{{exponentExpr}}}";
+        }
+      }
+
+      return "?"; // fallback
+    }
   }
 }

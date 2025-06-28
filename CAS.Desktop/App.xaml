@@ -8,24 +8,53 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
+                <!-- Other merged dictionaries -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
-            <!-- Catppuccin Colors -->
-            <Color x:Key="Base">#1e1e2e</Color>
-            <Color x:Key="Surface0">#313244</Color>
-            <Color x:Key="Surface1">#45475a</Color>
-            <Color x:Key="Text">#cdd6f4</Color>
-            <Color x:Key="Subtext0">#a6adc8</Color>
-            <Color x:Key="Accent">#89b4fa</Color>
 
-            <!-- SolidColorBrushes -->
-            <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource Base}"/>
-            <SolidColorBrush x:Key="CardBrush" Color="{StaticResource Surface0}"/>
-            <SolidColorBrush x:Key="Surface1Brush" Color="{StaticResource Surface1}"/>
-            <SolidColorBrush x:Key="TextBrush" Color="{StaticResource Text}"/>
-            <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource Subtext0}"/>
-            <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}"/>
+            <!-- Theme dictionaries -->
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Light theme -->
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="Base">#eff1f5</Color>
+                    <Color x:Key="Surface0">#ccd0da</Color>
+                    <Color x:Key="Surface1">#bcc0cc</Color>
+                    <Color x:Key="Text">#4c4f69</Color>
+                    <Color x:Key="Subtext0">#6c6f85</Color>
+                    <Color x:Key="Accent">#7287fd</Color>
+                    <Color x:Key="Peach">#fe640b</Color>
+                    <Color x:Key="Red">#d20f39</Color>
+
+                    <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource Base}" />
+                    <SolidColorBrush x:Key="CardBrush" Color="{StaticResource Surface0}" />
+                    <SolidColorBrush x:Key="Surface1Brush" Color="{StaticResource Surface1}" />
+                    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource Text}" />
+                    <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource Subtext0}" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
+                    <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource Peach}" />
+                    <SolidColorBrush x:Key="RedBrush" Color="{StaticResource Red}" />
+                </ResourceDictionary>
+
+                <!-- Dark theme -->
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="Base">#1e1e2e</Color>
+                    <Color x:Key="Surface0">#313244</Color>
+                    <Color x:Key="Surface1">#45475a</Color>
+                    <Color x:Key="Text">#cdd6f4</Color>
+                    <Color x:Key="Subtext0">#a6adc8</Color>
+                    <Color x:Key="Accent">#89b4fa</Color>
+                    <Color x:Key="Peach">#fab387</Color>
+                    <Color x:Key="Red">#f38ba8</Color>
+
+                    <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource Base}" />
+                    <SolidColorBrush x:Key="CardBrush" Color="{StaticResource Surface0}" />
+                    <SolidColorBrush x:Key="Surface1Brush" Color="{StaticResource Surface1}" />
+                    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource Text}" />
+                    <SolidColorBrush x:Key="SubtextBrush" Color="{StaticResource Subtext0}" />
+                    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}" />
+                    <SolidColorBrush x:Key="PeachBrush" Color="{StaticResource Peach}" />
+                    <SolidColorBrush x:Key="RedBrush" Color="{StaticResource Red}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

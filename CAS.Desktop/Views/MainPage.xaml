@@ -25,11 +25,25 @@
 
         <!-- Title Bar -->
         <Grid Grid.ColumnSpan="3"
-          Background="{ThemeResource Surface1}" Padding="10">
+            Background="{ThemeResource Surface1}" Padding="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
             <TextBlock Text="Computer Algebra System"
                 FontWeight="Bold"
                 Foreground="{ThemeResource TextBrush}"
                 VerticalAlignment="Center"/>
+
+            <Button x:Name="SettingsButton"
+                Content="⚙"
+                Grid.Column="1"
+                Click="OnClickSettingsToggle"
+                FontSize="20"
+                Background="{ThemeResource AccentBrush}"
+                Foreground="Black"
+                Margin="5,0,0,0"/>
         </Grid>
 
         <!-- Sidebar -->
@@ -41,7 +55,7 @@
                 Foreground="{ThemeResource SubtextBrush}"/>
             <ToggleButton x:Name="EvalToggle"
                 Content="Eval"
-                Click="ModeToggle_Click"
+                Click="OnClickActionToggle"
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
@@ -51,7 +65,7 @@
 
             <ToggleButton x:Name="SimplifyToggle"
                 Content="Simplify"
-                Click="ModeToggle_Click"
+                Click="OnClickActionToggle"
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
@@ -61,7 +75,7 @@
 
             <ToggleButton x:Name="ExpandToggle"
                 Content="Expand"
-                Click="ModeToggle_Click"
+                Click="OnClickActionToggle"
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
@@ -93,7 +107,7 @@
 
             <TextBlock Text="Rendered Input LaTeX" Foreground="{ThemeResource TextBrush}"/>
             <WebView2 x:Name="InputWebView"
-                DefaultBackgroundColor="#1e1e2e"
+                DefaultBackgroundColor="{ThemeResource Base}"
                 Height="150"
                 Margin="0,10"
                 />
@@ -104,39 +118,126 @@
 
             <TextBlock Text="Rendered Output LaTeX" Foreground="{ThemeResource TextBrush}"/>
             <WebView2 x:Name="OutputWebView"
-                DefaultBackgroundColor="#1e1e2e"
+                DefaultBackgroundColor="{ThemeResource Base}"
                 Height="150"
                 Margin="0,10"
                 />
         </StackPanel>
 
-        <!-- Variable Panel -->
         <StackPanel Grid.Row="1" Grid.Column="2"
             Background="{ThemeResource CardBrush}"
             Padding="10" Spacing="10">
-            <TextBlock Text="Variables"
-               FontWeight="Bold"
-               Foreground="{ThemeResource SubtextBrush}"/>
 
-            <!-- Add Variable Inputs -->
+            <!-- Header with switch buttons -->
             <StackPanel Orientation="Horizontal" Spacing="5">
-                <TextBox x:Name="VarNameBox"
-                 Width="60"
-                 PlaceholderText="Name"
-                 Background="{ThemeResource Surface1}"
-                 Foreground="{ThemeResource TextBrush}"/>
-                <TextBox x:Name="VarValueBox"
-                 Width="70"
-                 PlaceholderText="Value"
-                 Background="{ThemeResource Surface1}"
-                 Foreground="{ThemeResource TextBrush}"/>
-                <Button Content="+" Click="AddVariable_Click"
+                <Button Content="Variables" x:Name="VariablesButton"
+                Click="ShowVariablesPanel"
                 Background="{ThemeResource AccentBrush}"
                 Foreground="Black"/>
+                <Button Content="Functions" x:Name="FunctionsButton"
+                Click="ShowFunctionsPanel"
+                Background="{ThemeResource Surface1Brush}"
+                Foreground="{ThemeResource TextBrush}"/>
             </StackPanel>
 
-            <!-- Dynamic variable list -->
-            <StackPanel x:Name="VariableList" Spacing="5"/>
+            <!-- Variables panel -->
+            <StackPanel x:Name="VariablesPanel" Spacing="10">
+                <TextBlock Text="Variables" FontWeight="Bold" Foreground="{ThemeResource SubtextBrush}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <TextBox x:Name="VarNameBox"
+                     Width="60"
+                     PlaceholderText="Name"
+                     Background="{ThemeResource Surface1}"
+                     Foreground="{ThemeResource TextBrush}"/>
+                    <TextBox x:Name="VarValueBox"
+                     Width="70"
+                     PlaceholderText="Value"
+                     Background="{ThemeResource Surface1}"
+                     Foreground="{ThemeResource TextBrush}"/>
+                    <Button Content="+" Click="OnClickAddVariable"
+                    Background="{ThemeResource AccentBrush}"
+                    Foreground="Black"/>
+                </StackPanel>
+
+                <StackPanel x:Name="VariableList" Spacing="5"/>
+            </StackPanel>
+
+            <!-- Functions panel -->
+            <StackPanel x:Name="FunctionsPanel" Spacing="10" Visibility="Collapsed">
+                <TextBlock Text="Functions" FontWeight="Bold" Foreground="{ThemeResource SubtextBrush}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <TextBox x:Name="FuncNameBox"
+                     Width="60"
+                     PlaceholderText="Name"
+                     Background="{ThemeResource Surface1}"
+                     Foreground="{ThemeResource TextBrush}"/>
+                    <TextBox x:Name="FuncValueBox"
+                     Width="70"
+                     PlaceholderText="Expression"
+                     Background="{ThemeResource Surface1}"
+                     Foreground="{ThemeResource TextBrush}"/>
+                    <Button Content="+" Click="OnClickAddFunction"
+                    Background="{ThemeResource AccentBrush}"
+                    Foreground="Black"/>
+                </StackPanel>
+
+                <StackPanel x:Name="FunctionList" Spacing="5"/>
+            </StackPanel>
         </StackPanel>
+        <Border x:Name="SettingsSidebar"
+                Grid.Row="1" Grid.ColumnSpan="3"
+                Background="{ThemeResource CardBrush}"
+                Width="250"
+                HorizontalAlignment="Right"
+                Visibility="Collapsed"
+                Padding="15"
+                BorderBrush="{ThemeResource Peach}"
+                BorderThickness="2">
+            <StackPanel>
+                <TextBlock Text="Settings"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Foreground="{ThemeResource TextBrush}"
+                   Margin="0,0,0,10"/>
+                <CheckBox x:Name="LigthModeCheckBox"
+                    Content="Enable ligth mode"
+                    Foreground="{ThemeResource TextBrush}"
+                    Checked="OnCheckLightModeCheckBox"
+                    Unchecked="OnUncheckLightModeCheckBox"/>
+                <CheckBox x:Name="SimplifyFunctionEval"
+                    Content="Enable function evaluation during simplifying"
+                    Foreground="{ThemeResource TextBrush}"
+                    Checked="OnCheckSimplifyFunctionEval"
+                    Unchecked="OnUncheckSimplifyFunctionEval"/>
+                <CheckBox x:Name="UseRadians"
+                    Content="Use radians"
+                    Foreground="{ThemeResource TextBrush}"
+                    Checked="OnCheckUseRadians"
+                    Unchecked="OnUncheckUseRadians"/>
+                <CheckBox x:Name="Decimal2Rational"
+                    Content="Apply a decimal to rational approximation"
+                    Foreground="{ThemeResource TextBrush}"
+                    Checked="OnCheckDecimal2Rational"
+                    Unchecked="OnUncheckDecimal2rational"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Error popup on top -->
+        <Popup x:Name="ErrorPopup"
+               IsOpen="False"
+               HorizontalOffset="20"
+               VerticalOffset="20">
+            <Border Background="{ThemeResource RedBrush}"
+                    CornerRadius="5"
+                    Padding="10"
+                    MaxWidth="500">
+                <TextBlock x:Name="ErrorPopupText"
+                           Foreground="Black"
+                           TextWrapping="Wrap" />
+            </Border>
+        </Popup>
+
     </Grid>
 </Page>
