@@ -340,6 +340,227 @@ namespace CAS.Core.EquationParsing
 
     #endregion
 
+    #region Primitive polynomial operators
+
+    /// <summary>
+    /// Determines wheter the tree rooted at this node is General Polynomial Expression (GPE) in the given variable.
+    /// </summary>
+    public bool PolynomialGPE(ASTNode x)
+    {
+      var simplifier = new Simplifier();
+      var expanded = new ASTNode(this);
+      expanded = simplifier.Expand(expanded);
+
+      if (expanded.Kind() == "+" || expanded.Kind() == "-")
+      {
+        foreach (var child in expanded.Children)
+        {
+          if (!child.PolynomialGME(x)) return false;
+        }
+        return true;
+      }
+
+      return expanded.PolynomialGME(x);
+    }
+
+    /// <summary>
+    /// Determines wheter the tree rooted at this node is a General Monomial Expression (GME) in the given variable.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <returns></returns>
+    public bool PolynomialGME(ASTNode x)
+    {
+      if (IsConstant() || IsSymbol()) return true;
+      if (IsPower())
+      {
+        if (!OperandAt(0).PolynomialGME(x)) return false;
+        if (OperandAt(1).Token.Type is IntegerNum num && num.intVal >= 0) return true;
+        return false;
+      }
+
+      if (IsFunction())
+      {
+        foreach (var child in Children)
+          if (!child.FreeOf(x)) return false;
+        return true;
+      }
+
+      if (IsProduct())
+      {
+        bool foundVariablePart = false;
+        foreach (var child in Children)
+        {
+          if (!child.FreeOf(x))
+          {
+            if (foundVariablePart) return false; 
+            if (!child.PolynomialGME(x)) return false;
+            foundVariablePart = true;
+          }
+        }
+
+        return true;
+      }
+      // Fallback
+      return false;
+    }
+
+    /// <summary>
+    /// Calculates the degree of the GPE in 'x' represented by this node.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GPE.</remarks>
+    public int DegreeGPE(ASTNode x)
+    {
+      // Expanded to separate sum terms
+      var simplifier = new Simplifier();
+      var expanded = new ASTNode(this);
+      expanded = simplifier.Expand(expanded);
+
+      if (expanded.IsConstant())
+        return 0;
+
+      if (expanded.IsSymbol())
+        return expanded == x ? 1 : 0;
+
+      if (expanded.Kind() == "+" || expanded.Kind() == "-")
+      {
+        int maxDegree = 0;
+        foreach (var child in expanded.Children)
+        {
+          maxDegree = Math.Max(maxDegree, child.DegreeGME(x));
+        }
+        return maxDegree;
+      }
+
+      return expanded.DegreeGME(x);
+    }
+
+    /// <summary>
+    /// Calculates the degree of the GME in 'x' represented by this node.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GME.</remarks>
+    public int DegreeGME(ASTNode x)
+    {
+      if (IsConstant())
+        return 0;
+
+      if (IsSymbol())
+        return this == x ? 1 : 0;
+
+      if (IsPower())
+      {
+        if (OperandAt(0) == x && OperandAt(1).Token.Type is IntegerNum num)
+          return num.intVal;
+        return 0;
+      }
+
+      if (IsProduct())
+      {
+        int deg = 0;
+        foreach (var child in Children)
+        {
+          deg += child.DegreeGME(x);
+        }
+        return deg;
+      }
+
+      return 0;
+    }
+
+    /// <summary>
+    /// Returns the sum of the coefficients of the degree 'deg' terms in the GPE rooted at this node in variable 'x'.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GPE</remarks>
+    public ASTNode CoefficientGPE(ASTNode x, int deg)
+    {
+      // Expanded to get a sum of GME
+      var simplifier = new Simplifier();
+      var expanded = new ASTNode(this);
+      expanded = simplifier.Expand(expanded);
+
+      if (expanded.IsConstant())
+        if (deg == 0) return expanded;
+
+
+      if (expanded.IsSymbol())
+      {
+        if (expanded == x && deg == 1) return expanded;
+        if (deg == 0) return  expanded;
+        return new ASTNode(Token.Integer("0"));
+      }
+
+      List<ASTNode> GMEOfTargetDeg = new List<ASTNode>();
+      if (expanded.Kind() == "+" || expanded.Kind() == "-")
+      {
+        foreach (var child in expanded.Children)
+        {
+          if (child.DegreeGME(x) == deg)
+            GMEOfTargetDeg.Add(child.CoefficientGME(x));
+        }
+
+        if (GMEOfTargetDeg.Count() == 0)
+          return new ASTNode(Token.Integer("0"));
+
+        return simplifier.AutomaticSimplify(new ASTNode(Token.Operator("+"), GMEOfTargetDeg));
+      }
+
+      if (expanded.DegreeGME(x) == deg)
+        return simplifier.AutomaticSimplify(new ASTNode(Token.Operator("+"), new List<ASTNode> { expanded.CoefficientGME(x) }));
+
+      return new ASTNode(Token.Integer("0"));
+    }
+
+    /// <summary>
+    /// Returns the product of the coefficients of the GME rooted at this node in variable 'x'.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GME</remarks>
+    public ASTNode CoefficientGME(ASTNode x)
+    {
+      if (IsConstant())
+        return this;
+
+      if (IsSymbol())
+        return this == x ? new ASTNode(Token.Integer("1")) : this;
+
+      if (IsPower())
+      {
+        if (OperandAt(0) == x)
+          return new ASTNode(Token.Integer("1"));
+        return OperandAt(0).CoefficientGME(x);
+      }
+
+      if (IsProduct())
+      {
+        List<ASTNode> coeffs = new();
+        foreach (var child in Children)
+        {
+          if (child.FreeOf(x))
+            coeffs.Add(child);
+          else
+            coeffs.Add(child.CoefficientGME(x));
+        }
+
+        if (coeffs.Count == 1)
+          return coeffs[0];
+
+        return new ASTNode(Token.Operator("*"), coeffs);
+      }
+
+      // Fallback: if doesn't match any, return 1
+      return new ASTNode(Token.Integer("1"));
+    }
+
+    /// <summary>
+    /// Returns the sum of the leading coefficients of the GPE rooted at this node in the variable 'x'.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GPE</remarks>
+    public ASTNode LeadingCoefficient(ASTNode x)
+    {
+      var deg = DegreeGPE(x);
+      return CoefficientGPE(x, deg);
+    }
+
+    #endregion
+
     #region Type Checks
 
     public bool IsConstant() => Token.Type is Number || Token.Type is Fraction;
@@ -360,7 +581,7 @@ namespace CAS.Core.EquationParsing
         return num.value > 0;
       return false;
     }
- 
+
     #endregion
 
     public override bool Equals(object obj)
@@ -578,7 +799,9 @@ namespace CAS.Core.EquationParsing
       return result;
     }
 
-
+    /// <summary>
+    /// Converts the tree to a LaTeX string for display
+    /// </summary>
     public string ToLatex()
     {
       // Helper: wrap in parentheses if child is sum or product

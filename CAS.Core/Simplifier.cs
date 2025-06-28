@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Eventing.Reader;
 using System.Formats.Asn1;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.RightsManagement;
 using System.Text;
@@ -441,6 +442,22 @@ namespace CAS.Core
 
       return input;
     }
+
+    #region Polynomials
+
+    /// <summary>
+    /// Computes the polynomial division of u / v.
+    /// </summary>
+    /// <param name="u">A GPE</param>
+    /// <param name="v">A GPE</param>
+    /// <param name="x">The polynomial variable</param>
+    /// <returns>An array of thw quotien 'q' and remainder 'r': [q, r]</returns>
+    public ASTNode[] PolynomialDivision(ASTNode u, ASTNode v, Variable x)
+    {
+      return null;
+    }
+
+    #endregion
 
     #region Private methods
 

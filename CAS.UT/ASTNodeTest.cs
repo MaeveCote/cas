@@ -481,5 +481,236 @@ namespace CAS.UT
       var neg = new ASTNode(Token.Operator("-"), new List<ASTNode> { x });
       Assert.Equal("-x", neg.ToLatex());
     }
+
+    [Fact]
+    public void PolynomialAndDegreeGPE()
+    {
+      var x = new ASTNode(Token.Variable("x"));
+      var y = new ASTNode(Token.Variable("y"));
+
+      // Case 1: Simple monomial x^3
+      var expr1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("3"))
+      });
+      Assert.True(expr1.PolynomialGPE(x));
+      Assert.True(expr1.PolynomialGME(x));
+      Assert.Equal(3, expr1.DegreeGPE(x));
+
+      // Case 2: Constant 5
+      var expr2 = new ASTNode(Token.Integer("5"));
+      Assert.True(expr2.PolynomialGPE(x));
+      Assert.True(expr2.PolynomialGME(x));
+      Assert.Equal(0, expr2.DegreeGPE(x));
+
+      // Case 3: Product 3 * x^2
+      var expr3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("3")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+      Assert.True(expr3.PolynomialGPE(x));
+      Assert.True(expr3.PolynomialGME(x));
+      Assert.Equal(2, expr3.DegreeGPE(x));
+
+      // Case 4: Sum 2x + 3
+      var expr4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          x
+        }),
+        new ASTNode(Token.Integer("3"))
+      });
+      Assert.True(expr4.PolynomialGPE(x));
+      Assert.Equal(1, expr4.DegreeGPE(x));
+
+      // Case 5: Sum x^2 + 2x + 1
+      var expr5 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          x
+        }),
+        new ASTNode(Token.Integer("1"))
+      });
+      Assert.True(expr5.PolynomialGPE(x));
+      Assert.Equal(2, expr5.DegreeGPE(x));
+
+      // Case 6: Product involving function coefficient: sin(y) * x^3
+      var expr6 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Function("sin"), new List<ASTNode> { y }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        })
+      });
+      Assert.True(expr6.PolynomialGPE(x));
+      Assert.Equal(3, expr6.DegreeGPE(x));
+
+      // Case 7: Non-polynomial: x^sqrt(2)
+      var expr7 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Number("1.4142135")) // approximate sqrt(2)
+      });
+      Assert.False(expr7.PolynomialGPE(x));
+
+      // Case 8: Non-polynomial: ln(x)
+      var expr8 = new ASTNode(Token.Function("ln"), new List<ASTNode> { x });
+      Assert.False(expr8.PolynomialGPE(x));
+
+      // Case 9: GPE with multiple variables: x^2 + y^2
+      var expr9 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+      Assert.True(expr9.PolynomialGPE(x));
+      Assert.True(expr9.PolynomialGPE(y));
+      Assert.Equal(2, expr9.DegreeGPE(x));
+
+      // Case 10: GPE with function coefficient ln(x)*y
+      var expr10 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Function("ln"), new List<ASTNode> { x }),
+        y
+      });
+      Assert.True(expr10.PolynomialGPE(y));
+      Assert.Equal(1, expr10.DegreeGPE(y));
+    }
+
+    
+    [Fact]
+    public void CoefficientGPE()
+    {
+      var x = new ASTNode(Token.Variable("x"));
+
+      // Example: 3x^2 + 2x + 5
+      var poly1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("3")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("2"))
+          })
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          x
+        }),
+        new ASTNode(Token.Integer("5"))
+      });
+
+      // Degree 2: coefficient should be 3
+      var coeffDeg2 = poly1.CoefficientGPE(x, 2);
+      var expected2 = new ASTNode(Token.Integer("3"));
+      Assert.True(coeffDeg2 == expected2);
+
+      // Degree 1: coefficient should be 2
+      var coeffDeg1 = poly1.CoefficientGPE(x, 1);
+      var expected1 = new ASTNode(Token.Integer("2"));
+      Assert.True(coeffDeg1 == expected1);
+
+      // Degree 0: coefficient should be 5
+      var coeffDeg0 = poly1.CoefficientGPE(x, 0);
+      var expected0 = new ASTNode(Token.Integer("5"));
+      Assert.True(coeffDeg0 == expected0);
+
+      // Degree 3: no such term, should be 0
+      var coeffDeg3 = poly1.CoefficientGPE(x, 3);
+      var expected3 = new ASTNode(Token.Integer("0"));
+      Assert.True(coeffDeg3 == expected3);
+
+      var leadingCoeff = poly1.LeadingCoefficient(x);
+      Assert.True(coeffDeg2 == leadingCoeff);
+      
+      // More complex coefficients
+      var a = new ASTNode(Token.Variable("a"));
+      var b = new ASTNode(Token.Variable("b"));
+      var c = new ASTNode(Token.Variable("c"));
+
+      // Expression: (3*a*b)x^2 + (2*c)x + 5
+      var coeff1 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("3")),
+        a,
+        b
+      });
+
+      var coeff2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("2")),
+        c
+      });
+
+      var poly2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          coeff1,
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("2"))
+          })
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          coeff2,
+          x
+        }),
+        new ASTNode(Token.Integer("5"))
+      });
+
+      // Degree 2 coefficient: 3 * a * b
+      coeffDeg2 = poly2.CoefficientGPE(x, 2);
+      expected2 = coeff1;
+      Assert.True(coeffDeg2 == expected2);
+
+      // Degree 1 coefficient: 2 * c
+      coeffDeg1 = poly2.CoefficientGPE(x, 1);
+      expected1 = coeff2;
+      Assert.True(coeffDeg1 == expected1);
+
+      // Degree 0 coefficient: 5
+      coeffDeg0 = poly2.CoefficientGPE(x, 0);
+      expected0 = new ASTNode(Token.Integer("5"));
+      Assert.True(coeffDeg0 == expected0);
+
+      // Degree 3: no such term, should return 0
+      coeffDeg3 = poly2.CoefficientGPE(x, 3);
+      expected3 = new ASTNode(Token.Integer("0"));
+      Assert.True(coeffDeg3 == expected3);
+
+      leadingCoeff = poly2.LeadingCoefficient(x);
+      Assert.True(coeffDeg2 == leadingCoeff);
+    }
   }
 }
