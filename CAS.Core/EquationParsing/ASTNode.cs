@@ -363,12 +363,7 @@ namespace CAS.Core.EquationParsing
       return expanded.PolynomialGME(x);
     }
 
-    /// <summary>
-    /// Determines wheter the tree rooted at this node is a General Monomial Expression (GME) in the given variable.
-    /// </summary>
-    /// <param name="x"></param>
-    /// <returns></returns>
-    public bool PolynomialGME(ASTNode x)
+    private bool PolynomialGME(ASTNode x)
     {
       if (IsConstant() || IsSymbol()) return true;
       if (IsPower())
@@ -434,11 +429,7 @@ namespace CAS.Core.EquationParsing
       return expanded.DegreeGME(x);
     }
 
-    /// <summary>
-    /// Calculates the degree of the GME in 'x' represented by this node.
-    /// </summary>
-    /// <remarks>This operator assumes the node is in fact a GME.</remarks>
-    public int DegreeGME(ASTNode x)
+    private int DegreeGME(ASTNode x)
     {
       if (IsConstant())
         return 0;
@@ -509,11 +500,7 @@ namespace CAS.Core.EquationParsing
       return new ASTNode(Token.Integer("0"));
     }
 
-    /// <summary>
-    /// Returns the product of the coefficients of the GME rooted at this node in variable 'x'.
-    /// </summary>
-    /// <remarks>This operator assumes the node is in fact a GME</remarks>
-    public ASTNode CoefficientGME(ASTNode x)
+    private ASTNode CoefficientGME(ASTNode x)
     {
       if (IsConstant())
         return this;
@@ -581,6 +568,16 @@ namespace CAS.Core.EquationParsing
         return num.value > 0;
       return false;
     }
+
+    #endregion
+
+    #region Builders
+
+    private static ASTNode UnaryProduct(ASTNode v) => new(Token.Operator("*"), new() { v });
+    private static ASTNode UnarySum(ASTNode v) => new(Token.Operator("+"), new() { v });
+    // private static ASTNode Factorial(ASTNode v) => new(Token.Factorial(), new() { v });
+    private static ASTNode PromoteToPower(ASTNode v) => new(Token.Operator("^"), new() { v, new(Token.Integer("1")) });
+    public static ASTNode NewUndefined() => new ASTNode(Token.Undefined());
 
     #endregion
 
@@ -771,16 +768,6 @@ namespace CAS.Core.EquationParsing
       return a.Length - b.Length;
     }
 
-    #region Builders
-
-    private static ASTNode UnaryProduct(ASTNode v) => new(Token.Operator("*"), new() { v });
-    private static ASTNode UnarySum(ASTNode v) => new(Token.Operator("+"), new() { v });
-    // private static ASTNode Factorial(ASTNode v) => new(Token.Factorial(), new() { v });
-    private static ASTNode PromoteToPower(ASTNode v) => new(Token.Operator("^"), new() { v, new(Token.Integer("1")) });
-    public static ASTNode NewUndefined() => new ASTNode(Token.Undefined());
-
-    #endregion
-
     public override string ToString()
     {
       return ToString(0);
@@ -800,7 +787,7 @@ namespace CAS.Core.EquationParsing
     }
 
     /// <summary>
-    /// Converts the tree to a LaTeX string for display
+    /// Converts the tree to a LaTeX string for display.
     /// </summary>
     public string ToLatex()
     {

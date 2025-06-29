@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Navigation;
 using System.Xml.XPath;
 using CAS.Core.EquationParsing;
 
@@ -452,9 +453,70 @@ namespace CAS.Core
     /// <param name="v">A GPE</param>
     /// <param name="x">The polynomial variable</param>
     /// <returns>An array of thw quotien 'q' and remainder 'r': [q, r]</returns>
-    public ASTNode[] PolynomialDivision(ASTNode u, ASTNode v, Variable x)
+    public ASTNode[] PolynomialDivision(ASTNode u, ASTNode v, ASTNode x)
     {
-      return null;
+      if (v.Token.Type is IntegerNum num && num.intVal == 0)
+        throw new DivideByZeroException("Can't divide a polynomial by 0.");
+
+      ASTNode q = new ASTNode(Token.Integer("0"));
+      var r = u;
+      var m = r.DegreeGPE(x);
+      var n = v.DegreeGPE(x);
+      var lc_v = v.LeadingCoefficient(x);
+
+      while (m >= n)
+      {
+        var lc_r = r.LeadingCoefficient(x);
+        var s = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode> { lc_r, lc_v }));
+
+        var mMinusN = new ASTNode(Token.Integer((m - n).ToString()));
+        q = AutomaticSimplify(new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          q, new ASTNode(Token.Operator("*"), new List<ASTNode>{ 
+            s, new ASTNode(Token.Operator("^"), new List<ASTNode> {
+              new ASTNode(x), new ASTNode(mMinusN) }) })
+        }));
+
+        var mNode = new ASTNode(Token.Integer(m.ToString()));
+        var nNode = new ASTNode(Token.Integer(n.ToString()));
+
+        var xPowM = new ASTNode(Token.Operator("^"), new List<ASTNode> { x, mNode });
+        var lcr_xm = new ASTNode(Token.Operator("*"), new List<ASTNode> { lc_r, xPowM });
+        var leftTerm = new ASTNode(Token.Operator("-"), new List<ASTNode> { r, lcr_xm });
+
+        var xPowN = new ASTNode(Token.Operator("^"), new List<ASTNode> { x, nNode });
+        var lcv_xn = new ASTNode(Token.Operator("*"), new List<ASTNode> { lc_v, xPowN });
+        var rightInner = new ASTNode(Token.Operator("-"), new List<ASTNode> { v, lcv_xn });
+
+        var xPowMMinusN = new ASTNode(Token.Operator("^"), new List<ASTNode> { x, mMinusN });
+
+        var rightProduct = new ASTNode(Token.Operator("*"), new List<ASTNode> { rightInner, s, xPowMMinusN });
+
+        r = Expand(new ASTNode(Token.Operator("-"), new List<ASTNode> { leftTerm, rightProduct }));
+        m = r.DegreeGPE(x);
+      }
+
+      return new ASTNode[] { q, r };
+    }
+
+    /// <summary>
+    /// Computes the polynomial expansion resulting polynomial from the quotients of u / v.
+    /// </summary>
+    /// <param name="u">A GPE</param>
+    /// <param name="v">A GPE</param>
+    /// <param name="x">u and v polynomial variable</param>
+    /// <param name="t">The resulting polynomial variable</param>
+    /// <returns></returns>
+    public ASTNode PolynomialExpansion(ASTNode u, ASTNode v, ASTNode x, ASTNode t)
+    {
+      if (u.Token.Type is IntegerNum num && num.intVal == 0)
+        return new ASTNode(Token.Integer("0"));
+
+      var d = PolynomialDivision(u, v, x);
+
+      return Expand(new ASTNode(Token.Operator("+"), new List<ASTNode> {
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(t), PolynomialExpansion(d[0], v, x, t) }),
+        d[1]}));
     }
 
     #endregion

@@ -495,13 +495,11 @@ namespace CAS.UT
         new ASTNode(Token.Integer("3"))
       });
       Assert.True(expr1.PolynomialGPE(x));
-      Assert.True(expr1.PolynomialGME(x));
       Assert.Equal(3, expr1.DegreeGPE(x));
 
       // Case 2: Constant 5
       var expr2 = new ASTNode(Token.Integer("5"));
       Assert.True(expr2.PolynomialGPE(x));
-      Assert.True(expr2.PolynomialGME(x));
       Assert.Equal(0, expr2.DegreeGPE(x));
 
       // Case 3: Product 3 * x^2
@@ -515,7 +513,6 @@ namespace CAS.UT
         })
       });
       Assert.True(expr3.PolynomialGPE(x));
-      Assert.True(expr3.PolynomialGME(x));
       Assert.Equal(2, expr3.DegreeGPE(x));
 
       // Case 4: Sum 2x + 3
