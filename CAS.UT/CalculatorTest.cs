@@ -418,5 +418,28 @@ namespace CAS.UT
         Calculator.EvaluatePowerRationnal(invalid, valid);
       });
     }
+
+    [Fact] void SetGCD()
+    {
+      var nums1 = new List<int> { 24, 36, 60 };
+      int result1 = Calculator.SetGCD(nums1);
+
+      Assert.Equal(12, result1);
+
+      var nums2 = new List<int> { -42, 56, -70 };
+      int result2 = Calculator.SetGCD(nums2);
+
+      Assert.Equal(14, result2);
+
+      var nums3 = new List<int> { 3, 5, 11, 35, 24 };
+      int result3 = Calculator.SetGCD(nums3);
+
+      Assert.Equal(1, result3);
+
+      var nums4 = new List<int> { 4, 8, 24, 100, 16, 40 };
+      int result4 = Calculator.SetGCD(nums4);
+
+      Assert.Equal(4, result4);
+    }
   }
 }

@@ -142,6 +142,28 @@ namespace CAS.Core
     }
 
     /// <summary>
+    /// Computes the GCD of the set of numbers in nums.
+    /// </summary>
+    /// <exception cref="ArgumentException">Cannot compute the GCD of an empty set.</exception>
+    public static int SetGCD(List<int> nums)
+    {
+      int? currentGcd = null;
+      foreach (var num in nums)
+      {
+        if (currentGcd == null)
+          currentGcd = num;
+        else
+          currentGcd = GCD(currentGcd.Value, num);
+      }
+
+      //
+      if (currentGcd == null)
+        throw new ArgumentException("Cannot compute GCD of an empty set.");
+
+      return currentGcd.Value;
+    }
+
+    /// <summary>
     /// Evaluates the product of two rationnal numbers.
     /// </summary>
     /// <returns>A rationnal number</returns>

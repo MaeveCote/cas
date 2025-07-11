@@ -599,7 +599,6 @@ namespace CAS.UT
       Assert.Equal(1, expr10.DegreeGPE(y));
     }
 
-    
     [Fact]
     public void CoefficientGPE()
     {
@@ -708,6 +707,56 @@ namespace CAS.UT
 
       leadingCoeff = poly2.LeadingCoefficient(x);
       Assert.True(coeffDeg2 == leadingCoeff);
+    }
+
+    [Fact]
+    public void GetVariables_MultipleEquations()
+    {
+      // ---- Expression 1: x ----
+      var expr1 = new ASTNode(Token.Variable("x"), new List<ASTNode>());
+      var vars1 = expr1.GetVariables();
+      Assert.Single(vars1);
+      Assert.Contains(new Variable("x"), vars1);
+
+      // ---- Expression 2: x + y ----
+      var expr2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Variable("x"), new List<ASTNode>()),
+        new ASTNode(Token.Variable("y"), new List<ASTNode>())
+      });
+      var vars2 = expr2.GetVariables();
+      Assert.Equal(2, vars2.Count);
+      Assert.Contains(new Variable("x"), vars2);
+      Assert.Contains(new Variable("y"), vars2);
+
+      // ---- Expression 3: (a * b) + (c ^ 2) ----
+      var expr3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Variable("a"), new List<ASTNode>()),
+          new ASTNode(Token.Variable("b"), new List<ASTNode>())
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Variable("c"), new List<ASTNode>()),
+          new ASTNode(Token.Number("2"), new List<ASTNode>())
+        })
+      });
+      var vars3 = expr3.GetVariables();
+      Assert.Equal(3, vars3.Count);
+      Assert.Contains(new Variable("a"), vars3);
+      Assert.Contains(new Variable("b"), vars3);
+      Assert.Contains(new Variable("c"), vars3);
+
+      // ---- Expression 4: 2 + 5 ----
+      var expr4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Number("2"), new List<ASTNode>()),
+        new ASTNode(Token.Number("5"), new List<ASTNode>())
+      });
+      var vars4 = expr4.GetVariables();
+      Assert.Empty(vars4);
     }
   }
 }

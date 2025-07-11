@@ -318,7 +318,7 @@ namespace CAS.Core.EquationParsing
 
     #endregion
 
-    #region Standard operators
+    #region Standard Operators
 
     public static bool operator ==(ASTNode left, ASTNode right)
     {
@@ -340,7 +340,7 @@ namespace CAS.Core.EquationParsing
 
     #endregion
 
-    #region Primitive polynomial operators
+    #region Primitive Polynomial Operators
 
     /// <summary>
     /// Determines wheter the tree rooted at this node is General Polynomial Expression (GPE) in the given variable.
@@ -544,6 +544,26 @@ namespace CAS.Core.EquationParsing
     {
       var deg = DegreeGPE(x);
       return CoefficientGPE(x, deg);
+    }
+
+    /// <summary>
+    /// Compiles the variables in this equation.
+    /// </summary>
+    public HashSet<Variable> GetVariables()
+    {
+      List<HashSet<Variable>> childrenVars = new List<HashSet<Variable>>();
+      foreach (var child in Children)
+        childrenVars.Add(child.GetVariables());
+
+      HashSet<Variable> vars = new HashSet<Variable>();
+      if (Token.Type is Variable var)
+        vars.Add(var);
+
+      foreach (var childVars in childrenVars)
+        foreach (var childVar in childVars)
+          vars.Add(childVar);
+
+      return vars;
     }
 
     #endregion

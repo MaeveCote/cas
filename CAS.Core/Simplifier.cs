@@ -8,12 +8,15 @@ using System.Formats.Asn1;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.RightsManagement;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Media;
 using System.Windows.Navigation;
+using System.Xml;
 using System.Xml.XPath;
 using CAS.Core.EquationParsing;
 
@@ -31,7 +34,6 @@ namespace CAS.Core
     private bool SIMPLIFIER_EVAL_FUNCTIONS;
     private bool USE_RADIANS;
     private bool APPLY_DECIMAL_2_RATIONAL_CONVERSION;
-
 
     /// <summary>
     /// Constructs a mew Simplifier.
@@ -517,6 +519,31 @@ namespace CAS.Core
       return Expand(new ASTNode(Token.Operator("+"), new List<ASTNode> {
         new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(t), PolynomialExpansion(d[0], v, x, t) }),
         d[1]}));
+    }
+
+    /// <summary>
+    /// Factors a polynomial. This method only factors polynomials of degree 2, 3, 4 or pulling common factors out.
+    /// </summary>
+    /// <remarks>This is done over the reals.</remarks>
+    /// <remarks>This method assumes the input is a polynomial of single variable.</remarks>
+    /// <param name="poly">A GPE</param>
+    /// <param name="x">The variable (simple variable)</param>
+    /// <returns>The factored polynomial or the input if it is not factorizable.</returns>
+    public ASTNode PolynomialFactorization(ASTNode poly, ASTNode x)
+    {
+      var expandedPoly = Expand(poly);
+
+      // Validate that "x" is a variable and that it is the only one in the polynomial
+      var variableSet = expandedPoly.GetVariables();
+      if (!(x.Token.Type is Variable v) || !variableSet.Contains(v) || variableSet.Count() != 1)
+        return poly;
+
+      // 1: Get the common factor out if there is one
+
+
+
+
+      return null;
     }
 
     #endregion
@@ -1148,6 +1175,94 @@ namespace CAS.Core
       }
     }
 
+    // Returns [common factor, inside polynomial]
+    private List<ASTNode?> PolynomialPullCommonFactor(ASTNode poly, ASTNode x)
+    {
+      List<int>? constants = new List<int>();
+      int smallestDegree = 0;
+      if (poly.Token.Type is Operator op && op.stringValue == "+")
+      {
+        foreach (var operand in poly.Children)
+        {
+          var constant = operand.Const();
+          if (constants != null)
+          {
+            if (constant.Token.Type is IntegerNum num)
+              constants.Add(num.intVal);
+            else
+              constants = null;
+          }
+
+          int deg = operand.DegreeGPE(x);
+          if (deg < smallestDegree)
+            smallestDegree = deg;
+        }
+
+        ASTNode? constantPullOut = null;
+        int gcd = 0;
+        if (constants != null)
+        {
+          gcd = Calculator.SetGCD(constants);
+
+          if (gcd != 1)
+            constantPullOut = new ASTNode(Token.Integer(gcd.ToString()));
+        }
+
+        ASTNode? variablePullOut = null;
+        if (smallestDegree != 0)
+        {
+          if (smallestDegree == 1)
+            variablePullOut = new ASTNode(Token.Variable("x"));
+          else
+            variablePullOut = new ASTNode(Token.Operator("^"), new List<ASTNode>
+            {
+              new ASTNode(Token.Variable("x")),
+              new ASTNode(Token.Integer(smallestDegree.ToString()))
+            });
+        }
+
+        ASTNode? productPullOut = null;
+        if (variablePullOut != null && constantPullOut != null)
+          productPullOut = new ASTNode(Token.Operator("*"), new List<ASTNode> { constantPullOut, variablePullOut });
+        else if (variablePullOut != null)
+          productPullOut = variablePullOut;
+        else if (constantPullOut != null)
+          productPullOut = constantPullOut;
+
+        if (productPullOut == null)
+          return [null, poly];
+
+        // Reduce poly
+        ASTNode newPoly = new ASTNode(Token.Operator("*"));
+        foreach (var operand in poly.Children)
+        {
+          var constant = operand.Const();
+          int newVal = ((IntegerNum)constant.Token.Type).intVal / gcd;
+
+          int deg = operand.DegreeGPE(x);
+          deg -= smallestDegree;
+
+          var newChild = new ASTNode(Token.Operator("*"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer(newVal.ToString()), new List<ASTNode>
+            {
+              new ASTNode(Token.Operator("^"), new List<ASTNode>
+              {
+                x,
+                new ASTNode(Token.Integer(deg.ToString()))
+              })
+            })
+          });
+
+          newChild = AutomaticSimplify(newChild);
+          newPoly.Children.Add(newChild);
+        }
+
+        return [productPullOut, newPoly];
+      }
+      else
+        return [ null, poly ];
+    }
     #endregion
   }
 }
