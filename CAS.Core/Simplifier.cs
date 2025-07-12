@@ -6,15 +6,19 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Eventing.Reader;
 using System.Formats.Asn1;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Policy;
 using System.Security.RightsManagement;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using System.Xml;
 using System.Xml.XPath;
@@ -34,17 +38,19 @@ namespace CAS.Core
     private bool SIMPLIFIER_EVAL_FUNCTIONS;
     private bool USE_RADIANS;
     private bool APPLY_DECIMAL_2_RATIONAL_CONVERSION;
+    private int MAX_APPROX_ITERATIONS;
 
     /// <summary>
     /// Constructs a mew Simplifier.
     /// </summary>
     /// <param name="simplifierEvalFunctions">Apply function evaluation if possible when simplifyina.</param>
     /// <param name="useRadians">Use radians in trigonometric simplifying.</param>
-    public Simplifier(bool simplifierEvalFunctions = false, bool useRadians = false, bool applyDecimalToRationalConversion = false)
+    public Simplifier(bool simplifierEvalFunctions = false, bool useRadians = false, bool applyDecimalToRationalConversion = false, int maxApproxIterations = 30)
     {
       SIMPLIFIER_EVAL_FUNCTIONS = simplifierEvalFunctions;
       USE_RADIANS = useRadians;
       APPLY_DECIMAL_2_RATIONAL_CONVERSION = applyDecimalToRationalConversion;
+      MAX_APPROX_ITERATIONS = maxApproxIterations;
     }
 
     public void SetSimplifierEvalFunctions(bool val) => SIMPLIFIER_EVAL_FUNCTIONS = val;
@@ -539,11 +545,28 @@ namespace CAS.Core
         return poly;
 
       // 1: Get the common factor out if there is one
+      var commonFactorRes = PolynomialPullCommonFactor(expandedPoly, x);
 
+      // 2: Factor the polynomial if the degree allows it
+      // 2nd degree factorization is the only case supported for now. 3rd and 4th requires complex arithmetic, which is not supported.
+      var insidePoly = commonFactorRes[1];
+      if (insidePoly == null)
+        throw new Exception("Unexpected null value, the common factor pull out should not return a null factored polynomial.");
+      int degree = insidePoly.DegreeGPE(x);
 
+      if (degree == 2)
+      {
+        var factor2ndDeg = Polynomial2ndDegreeFactorization(expandedPoly, x);
+        insidePoly = new ASTNode(Token.Operator("*"), factor2ndDeg);
+      }
 
+      ASTNode result = new ASTNode(Token.Operator("*"));
+      if (commonFactorRes[0] != null)
+        result.Children = [commonFactorRes[0], insidePoly];
+      else
+        result.Children = [insidePoly];
 
-      return null;
+      return AutomaticSimplify(result);
     }
 
     #endregion
@@ -804,17 +827,46 @@ namespace CAS.Core
       if (powBase.Token.Type is Undefined || frac.Token.Type is Undefined)
         return new ASTNode(Token.Undefined());
 
-      // SPOW-2
-      if (powBase.Token.Type is IntegerNum num && num.intVal == 0)
+      if (powBase.Token.Type is IntegerNum num)
       {
-        if (frac.Token.Type is Fraction && frac.Children[0].IsPositive())
-          return new ASTNode(Token.Integer("0"));
-        return new ASTNode(Token.Undefined());
+        var numDenum = Calculator.GetNumAndDenum(frac);
+        // SPOW-2
+        if (num.intVal == 0)
+        {
+          if (frac.Token.Type is Fraction && frac.Children[0].IsPositive())
+            return new ASTNode(Token.Integer("0"));
+          return new ASTNode(Token.Undefined());
+        }
+        // SPOW-3
+        if (num.intVal == 1)
+          return new ASTNode(Token.Integer("1"));
+
+        // ADDED Undefine even roots of negative
+        if (num.intVal < 0 && numDenum[1] % 2 == 0)
+          return ASTNode.NewUndefined();
+
+        // ADDED Simplify perfect exponent
+        if (numDenum[0] == 1)
+        {
+          double root = Math.Pow(num.intVal, (double)numDenum[0] / (double)numDenum[1]);
+          if (IsIntegerApprox(root))
+            return new ASTNode(Token.Integer((Math.Round(root)).ToString()));
+          int[]? compositeRoot = GetCompositeRoot(num.intVal, numDenum[1], MAX_APPROX_ITERATIONS);
+          if (compositeRoot != null)
+          {
+            return new ASTNode(Token.Operator("*"), new List<ASTNode>
+            {
+              new ASTNode(Token.Integer(Math.Round(Math.Pow(compositeRoot[0], (double)numDenum[0] / (double)numDenum[1])).ToString())),
+              new ASTNode(Token.Operator("^"), new List<ASTNode>
+              {
+                new ASTNode(Token.Integer(compositeRoot[1].ToString())),
+                new ASTNode(frac)
+              })
+            });
+          }
+        }
       }
 
-      // SPOW-3
-      if (powBase.Token.Type is IntegerNum one && one.intVal == 1)
-        return new ASTNode(Token.Integer("1"));
 
       // SINTPOW-4
       if (powBase.Token.Type.stringValue == "^")
@@ -1175,12 +1227,48 @@ namespace CAS.Core
       }
     }
 
-    // Returns [common factor, inside polynomial]
+    // returns [power of, remainder]
+    private int[]? GetCompositeRoot(int a, int b, int maxIterations)
+    {
+      int[]? result = null;
+      int A = a;
+      for (int i = 0; i < maxIterations; i++)
+      {
+        var inter = GetCompositeRoot_Rec(A, b);
+        if (inter == null)
+          return result;
+
+        A /= (int)inter;
+
+        if (result == null)
+          result = [(int)inter, A];
+        else
+          result = [result[0] * (int)inter, A];
+      }
+      return result;
+    }
+
+    private int? GetCompositeRoot_Rec(int a, int b)
+    {
+      for (int i = 2; i * i < a; i++)
+      {
+        int B = (int)Math.Pow(i, b);
+        while (B <= a)
+        {
+          if (IsIntegerApprox((double)a / B))
+            return B;
+          B = B * B;
+        }
+      }
+      return null;
+    }
+
+    // Returns [common factor, factored polynomial]
     private List<ASTNode?> PolynomialPullCommonFactor(ASTNode poly, ASTNode x)
     {
       List<int>? constants = new List<int>();
-      int smallestDegree = 0;
-      if (poly.Token.Type is Operator op && op.stringValue == "+")
+      int smallestDegree = int.MaxValue;
+      if (poly.Token.Type is Operator op && op.stringValue == "+" && poly.Children.Count() > 1)
       {
         foreach (var operand in poly.Children)
         {
@@ -1199,7 +1287,7 @@ namespace CAS.Core
         }
 
         ASTNode? constantPullOut = null;
-        int gcd = 0;
+        int? gcd = null;
         if (constants != null)
         {
           gcd = Calculator.SetGCD(constants);
@@ -1233,24 +1321,26 @@ namespace CAS.Core
           return [null, poly];
 
         // Reduce poly
-        ASTNode newPoly = new ASTNode(Token.Operator("*"));
+        ASTNode newPoly = new ASTNode(Token.Operator("+"));
         foreach (var operand in poly.Children)
         {
           var constant = operand.Const();
-          int newVal = ((IntegerNum)constant.Token.Type).intVal / gcd;
+          if (gcd != null)
+          {
+            int newVal = ((IntegerNum)constant.Token.Type).intVal / (int)gcd;
+            constant = new ASTNode(Token.Integer(newVal.ToString()));
+          }
 
           int deg = operand.DegreeGPE(x);
           deg -= smallestDegree;
 
           var newChild = new ASTNode(Token.Operator("*"), new List<ASTNode>
           {
-            new ASTNode(Token.Integer(newVal.ToString()), new List<ASTNode>
+            constant,
+            new ASTNode(Token.Operator("^"), new List<ASTNode>
             {
-              new ASTNode(Token.Operator("^"), new List<ASTNode>
-              {
-                x,
-                new ASTNode(Token.Integer(deg.ToString()))
-              })
+              x,
+              new ASTNode(Token.Integer(deg.ToString()))
             })
           });
 
@@ -1263,6 +1353,120 @@ namespace CAS.Core
       else
         return [ null, poly ];
     }
+    
+    private List<ASTNode> Polynomial2ndDegreeFactorization(ASTNode poly, ASTNode x)
+    {
+      ASTNode a = new ASTNode(Token.Integer("0"));
+      ASTNode b = new ASTNode(Token.Integer("0"));
+      ASTNode c = new ASTNode(Token.Integer("0"));
+
+      foreach (var operand in poly.Children)
+      {
+        int deg = operand.DegreeGPE(x);
+        if (deg == 0)
+          c = operand.Const();
+        else if (deg == 1)
+          b = operand.Const();
+        else if (deg == 2)
+          a = operand.Const();
+        else
+          throw new ArgumentException("'poly' is not a 2nd degree polynomial.");
+      }
+
+      var discriminant = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode> 
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> {b, new ASTNode(Token.Integer("2"))}),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("4")),
+          a,
+          c
+        })
+      }));
+
+      if (discriminant.Token.Type is Undefined)
+        throw new ArgumentException("'poly' is invalid, it's discriminant is undefined.");
+      double value = discriminant.EvaluateAsDouble();
+      if (value < 0)
+      {
+        // No roots
+        return [poly];
+      }
+      else if (value == 0)
+      {
+        // Repeated root
+        var root = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode> { b }),
+          new ASTNode(Token.Operator("*"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("2")),
+            a
+          })
+        }));
+        return [AutomaticSimplify(new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode> {
+            new ASTNode(x),
+            root
+          }),
+          new ASTNode(Token.Integer("2"))
+        }))];
+      }
+      else
+      {
+        // Two distinct roots
+        var root1 = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("-"), new List<ASTNode> { b }),
+            new ASTNode(Token.Operator("^"), new List<ASTNode>
+            {
+              discriminant,
+              new ASTNode(Token.Fraction(), new List<ASTNode> { new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2")) })
+            })
+          }),
+          new ASTNode(Token.Operator("*"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("2")),
+            a
+          })
+        }));
+        var root2 = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("-"), new List<ASTNode> { b }),
+            new ASTNode(Token.Operator("^"), new List<ASTNode>
+            {
+              discriminant,
+              new ASTNode(Token.Fraction(), new List<ASTNode> { new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2")) })
+            })
+          }),
+          new ASTNode(Token.Operator("*"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("2")),
+            a
+          })
+        }));
+
+        var linear1 = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode>
+        {
+          new ASTNode(x),
+          root1
+        }));
+        var linear2 = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode>
+        {
+          new ASTNode(x),
+          root2
+        }));
+
+        return [linear1, linear2];
+      }
+    }
+    
+
     #endregion
   }
 }

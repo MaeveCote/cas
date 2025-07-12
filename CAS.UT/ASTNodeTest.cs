@@ -186,7 +186,7 @@ namespace CAS.UT
       // Case 7: Integer
       var integer = new ASTNode(Token.Integer("4"));
       Assert.True(integer.Terms().Token.Type is Undefined);
-      Assert.True(integer.Const().Token.Type is Undefined);
+      Assert.True(integer.Const() == integer);
 
       // Case 8: Fraction
       var fraction = new ASTNode(Token.Fraction(), new List<ASTNode>
@@ -195,7 +195,7 @@ namespace CAS.UT
         new ASTNode(Token.Integer("3"))
       });
       Assert.True(fraction.Terms().Token.Type is Undefined);
-      Assert.True(fraction.Const().Token.Type is Undefined);
+      Assert.True(fraction.Const() == fraction);
     }
 
     [Fact]

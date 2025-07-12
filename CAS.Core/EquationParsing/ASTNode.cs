@@ -161,6 +161,7 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the terms of a product, a unary product if it is an operator or Undefined otherwise.
     /// </summary>
+    /// <remarks>To get a list of terms do : node.Terms().Children</remarks>
     /// <returns>A product without the constant.</returns>
     public ASTNode Terms()
     {
@@ -185,10 +186,12 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the constant of a product, 1 if it is an operator or Undefined otherwise.
     /// </summary>
-    /// <remarks>To get a list of terms do : node.Terms().Children</remarks>
     /// <returns></returns>
     public ASTNode Const()
     {
+      if (IsConstant())
+        return new ASTNode(this);
+
       if (Token.Type is Operator op)
       {
         if (op.stringValue == "*")

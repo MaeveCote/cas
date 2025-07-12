@@ -332,7 +332,6 @@ namespace CAS.Core
 
         return new ASTNode(Token.Undefined());
       }
-
     }
 
     /// <summary>
@@ -357,6 +356,24 @@ namespace CAS.Core
         throw new ArgumentException("The 'node' should be a rationnal number");
 
       return frac;
+    }
+
+    /// <summary>
+    /// Finds if a is a power of b.
+    /// </summary>
+    public static bool IsPowerOf(int a, int b, int MaxIterations = 30)
+    {
+      int power = a;
+      for (int i = 1; i <= MaxIterations; i++)
+      {
+        if (a == b)
+          return true;
+        if (power > b)
+          break;
+        power *= a;
+      }
+
+      return false;
     }
 
     #region Private methods
