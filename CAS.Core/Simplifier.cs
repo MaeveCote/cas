@@ -136,36 +136,47 @@ namespace CAS.Core
     /// <summary>
     /// Simplifies a Basic Algebraic Expression (BAE) into an Automatically Simplifes Algebraic Expression (ASAE)
     /// by applying recursively a combination of simplify power, product, sum, quotien and difference.
+    /// Also performs a polynomial factorization at the end.
     /// </summary>
     /// <param name="input">A BAE</param>
     /// <returns>An ASAE</returns>
-    public ASTNode AutomaticSimplify(ASTNode input)
+    public ASTNode AutomaticSimplify(ASTNode input, bool simplifyPolynomials = true)
     {
+      ASTNode result;
       if (input.Token.Type is Number || input.Token.Type is Variable)
-        return input;
+        result = input;
       else if (input.Token.Type is Fraction)
-        return SimplifyRationalNumber(input);
+        result =  SimplifyRationalNumber(input);
       else
       {
         // Simplify the nodes recursively
         for (int i = 0; i < input.Children.Count(); i++)
-          input.Children[i] = AutomaticSimplify(input.Children[i]);
+          input.Children[i] = AutomaticSimplify(input.Children[i], false);
 
         if (input.Kind() == "^")
-          return SimplifyPower(input);
-        if (input.Kind() == "*")
-          return SimplifyProduct(input);
-        if (input.Kind() == "+")
-          return SimplifySum(input);
-        if (input.Kind() == "-")
-          return SimplifyDifference(input);
-        if (input.Kind() == "/")
-          return SimplifyQuotient(input);
-        if (input.Token.Type is Function)
-          return SimplifyFunction(input);
+          result = SimplifyPower(input);
+        else if (input.Kind() == "*")
+          result = SimplifyProduct(input);
+        else if (input.Kind() == "+")
+          result = SimplifySum(input);
+        else if (input.Kind() == "-")
+          result = SimplifyDifference(input);
+        else if (input.Kind() == "/")
+          result = SimplifyQuotient(input);
+        else if (input.Token.Type is Function)
+          result = SimplifyFunction(input);
+        else
+          result = ASTNode.NewUndefined();
       }
 
-      return ASTNode.NewUndefined();
+      if (simplifyPolynomials)
+      {
+        var variables = result.GetVariables();
+        if (variables.Count == 1)
+          return PolynomialSimplify(result, new ASTNode(Token.Variable(variables.First().stringValue)));
+      }
+
+      return result;
     }
 
     /// <summary>
@@ -416,7 +427,7 @@ namespace CAS.Core
       ExpandInPlace(root);
 
       // Simplify the resulting tree.
-      return AutomaticSimplify(root);
+      return AutomaticSimplify(root, false);
     }
 
     /// <summary>
@@ -475,7 +486,7 @@ namespace CAS.Core
       while (m >= n)
       {
         var lc_r = r.LeadingCoefficient(x);
-        var s = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode> { lc_r, lc_v }));
+        var s = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode> { lc_r, lc_v }), false);
 
         var mMinusN = new ASTNode(Token.Integer((m - n).ToString()));
         q = AutomaticSimplify(new ASTNode(Token.Operator("+"), new List<ASTNode>
@@ -483,7 +494,7 @@ namespace CAS.Core
           q, new ASTNode(Token.Operator("*"), new List<ASTNode>{ 
             s, new ASTNode(Token.Operator("^"), new List<ASTNode> {
               new ASTNode(x), new ASTNode(mMinusN) }) })
-        }));
+        }), false);
 
         var mNode = new ASTNode(Token.Integer(m.ToString()));
         var nNode = new ASTNode(Token.Integer(n.ToString()));
@@ -556,7 +567,7 @@ namespace CAS.Core
 
       if (degree == 2)
       {
-        var factor2ndDeg = Polynomial2ndDegreeFactorization(expandedPoly, x);
+        var factor2ndDeg = Polynomial2ndDegreeFactorization(insidePoly, x);
         insidePoly = new ASTNode(Token.Operator("*"), factor2ndDeg);
       }
 
@@ -566,7 +577,30 @@ namespace CAS.Core
       else
         result.Children = [insidePoly];
 
-      return AutomaticSimplify(result);
+      return AutomaticSimplify(result, false);
+    }
+
+    /// <summary>
+    /// Factors all the polynomials inside the given input.
+    /// </summary>
+    /// <param name="input">A mathematical equation in a single variable</param>
+    /// <param name="x">The polynomial variable</param>
+    /// <returns>The factored equation.</returns>
+    public ASTNode PolynomialSimplify(ASTNode input, ASTNode x)
+    {
+      if (input.Token.Type is Undefined)
+        return input;
+
+      if (input.IsPolynomialGPE(x, false))
+        return AutomaticSimplify(PolynomialFactorization(input, x), false);
+
+      // Simplify the children if they are polynomials
+      var result = new ASTNode(input);
+      result.Children = new List<ASTNode>();
+      foreach (var child in input.Children)
+        result.Children.Add(PolynomialSimplify(child, x));
+
+      return AutomaticSimplify(result, false);
     }
 
     #endregion
@@ -1344,7 +1378,7 @@ namespace CAS.Core
             })
           });
 
-          newChild = AutomaticSimplify(newChild);
+          newChild = AutomaticSimplify(newChild, false);
           newPoly.Children.Add(newChild);
         }
 
@@ -1359,6 +1393,19 @@ namespace CAS.Core
       ASTNode a = new ASTNode(Token.Integer("0"));
       ASTNode b = new ASTNode(Token.Integer("0"));
       ASTNode c = new ASTNode(Token.Integer("0"));
+
+      if (poly.Token.Type.stringValue == "^")
+      {
+        int deg = poly.DegreeGPE(x);
+        if (deg == 0)
+          c = poly.Const();
+        else if (deg == 1)
+          b = poly.Const();
+        else if (deg == 2)
+          a = poly.Const();
+        else
+          throw new ArgumentException("'poly' is not a 2nd degree polynomial.");
+      }
 
       foreach (var operand in poly.Children)
       {
@@ -1382,7 +1429,7 @@ namespace CAS.Core
           a,
           c
         })
-      }));
+      }), false);
 
       if (discriminant.Token.Type is Undefined)
         throw new ArgumentException("'poly' is invalid, it's discriminant is undefined.");
@@ -1403,7 +1450,7 @@ namespace CAS.Core
             new ASTNode(Token.Integer("2")),
             a
           })
-        }));
+        }), false);
         return [AutomaticSimplify(new ASTNode(Token.Operator("^"), new List<ASTNode>
         {
           new ASTNode(Token.Operator("-"), new List<ASTNode> {
@@ -1411,7 +1458,7 @@ namespace CAS.Core
             root
           }),
           new ASTNode(Token.Integer("2"))
-        }))];
+        }), false)];
       }
       else
       {
@@ -1432,7 +1479,7 @@ namespace CAS.Core
             new ASTNode(Token.Integer("2")),
             a
           })
-        }));
+        }), false);
         var root2 = AutomaticSimplify(new ASTNode(Token.Operator("/"), new List<ASTNode>
         {
           new ASTNode(Token.Operator("-"), new List<ASTNode>
@@ -1449,23 +1496,22 @@ namespace CAS.Core
             new ASTNode(Token.Integer("2")),
             a
           })
-        }));
+        }), false);
 
         var linear1 = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode>
         {
           new ASTNode(x),
           root1
-        }));
+        }), false);
         var linear2 = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode>
         {
           new ASTNode(x),
           root2
-        }));
+        }), false);
 
         return [linear1, linear2];
       }
     }
-    
 
     #endregion
   }

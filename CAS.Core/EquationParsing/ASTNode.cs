@@ -14,7 +14,6 @@ namespace CAS.Core.EquationParsing
   public class ASTNode
   {
     public Token Token { get; set; }
-    public ASTNode? Parent { get; set; }
     public List<ASTNode> Children { get; set; }
 
     /// <summary>
@@ -23,10 +22,7 @@ namespace CAS.Core.EquationParsing
     public ASTNode(Token token, List<ASTNode> children)
     {
       Token = token;
-      Parent = null;
       Children = children;
-      foreach (ASTNode n in Children)
-        n.Parent = this;
     }
 
     /// <summary>
@@ -35,7 +31,6 @@ namespace CAS.Core.EquationParsing
     public ASTNode(Token token)
     {
       Token = token;
-      Parent = null;
       Children = new List<ASTNode>();
     }
     
@@ -44,7 +39,7 @@ namespace CAS.Core.EquationParsing
     /// </summary>
     public ASTNode(ASTNode other)
     {
-      Token = other.Token; // Assuming Token is immutable or copied correctly
+      Token = other.Token;
       Children = other.Children.Select(child => new ASTNode(child)).ToList();
     }
 
@@ -348,30 +343,32 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Determines wheter the tree rooted at this node is General Polynomial Expression (GPE) in the given variable.
     /// </summary>
-    public bool PolynomialGPE(ASTNode x)
+    public bool IsPolynomialGPE(ASTNode x, bool expand = true)
     {
       var simplifier = new Simplifier();
       var expanded = new ASTNode(this);
-      expanded = simplifier.Expand(expanded);
+
+      if (expand)
+        expanded = simplifier.Expand(expanded);
 
       if (expanded.Kind() == "+" || expanded.Kind() == "-")
       {
         foreach (var child in expanded.Children)
         {
-          if (!child.PolynomialGME(x)) return false;
+          if (!child.IsPolynomialGME(x)) return false;
         }
         return true;
       }
 
-      return expanded.PolynomialGME(x);
+      return expanded.IsPolynomialGME(x);
     }
 
-    private bool PolynomialGME(ASTNode x)
+    private bool IsPolynomialGME(ASTNode x)
     {
       if (IsConstant() || IsSymbol()) return true;
       if (IsPower())
       {
-        if (!OperandAt(0).PolynomialGME(x)) return false;
+        if (!OperandAt(0).IsPolynomialGME(x)) return false;
         if (OperandAt(1).Token.Type is IntegerNum num && num.intVal >= 0) return true;
         return false;
       }
@@ -391,7 +388,7 @@ namespace CAS.Core.EquationParsing
           if (!child.FreeOf(x))
           {
             if (foundVariablePart) return false; 
-            if (!child.PolynomialGME(x)) return false;
+            if (!child.IsPolynomialGME(x)) return false;
             foundVariablePart = true;
           }
         }

@@ -494,12 +494,12 @@ namespace CAS.UT
         x,
         new ASTNode(Token.Integer("3"))
       });
-      Assert.True(expr1.PolynomialGPE(x));
+      Assert.True(expr1.IsPolynomialGPE(x));
       Assert.Equal(3, expr1.DegreeGPE(x));
 
       // Case 2: Constant 5
       var expr2 = new ASTNode(Token.Integer("5"));
-      Assert.True(expr2.PolynomialGPE(x));
+      Assert.True(expr2.IsPolynomialGPE(x));
       Assert.Equal(0, expr2.DegreeGPE(x));
 
       // Case 3: Product 3 * x^2
@@ -512,7 +512,7 @@ namespace CAS.UT
           new ASTNode(Token.Integer("2"))
         })
       });
-      Assert.True(expr3.PolynomialGPE(x));
+      Assert.True(expr3.IsPolynomialGPE(x));
       Assert.Equal(2, expr3.DegreeGPE(x));
 
       // Case 4: Sum 2x + 3
@@ -525,7 +525,7 @@ namespace CAS.UT
         }),
         new ASTNode(Token.Integer("3"))
       });
-      Assert.True(expr4.PolynomialGPE(x));
+      Assert.True(expr4.IsPolynomialGPE(x));
       Assert.Equal(1, expr4.DegreeGPE(x));
 
       // Case 5: Sum x^2 + 2x + 1
@@ -543,7 +543,7 @@ namespace CAS.UT
         }),
         new ASTNode(Token.Integer("1"))
       });
-      Assert.True(expr5.PolynomialGPE(x));
+      Assert.True(expr5.IsPolynomialGPE(x));
       Assert.Equal(2, expr5.DegreeGPE(x));
 
       // Case 6: Product involving function coefficient: sin(y) * x^3
@@ -556,7 +556,7 @@ namespace CAS.UT
           new ASTNode(Token.Integer("3"))
         })
       });
-      Assert.True(expr6.PolynomialGPE(x));
+      Assert.True(expr6.IsPolynomialGPE(x));
       Assert.Equal(3, expr6.DegreeGPE(x));
 
       // Case 7: Non-polynomial: x^sqrt(2)
@@ -565,11 +565,11 @@ namespace CAS.UT
         x,
         new ASTNode(Token.Number("1.4142135")) // approximate sqrt(2)
       });
-      Assert.False(expr7.PolynomialGPE(x));
+      Assert.False(expr7.IsPolynomialGPE(x));
 
       // Case 8: Non-polynomial: ln(x)
       var expr8 = new ASTNode(Token.Function("ln"), new List<ASTNode> { x });
-      Assert.False(expr8.PolynomialGPE(x));
+      Assert.False(expr8.IsPolynomialGPE(x));
 
       // Case 9: GPE with multiple variables: x^2 + y^2
       var expr9 = new ASTNode(Token.Operator("+"), new List<ASTNode>
@@ -585,8 +585,8 @@ namespace CAS.UT
           new ASTNode(Token.Integer("2"))
         })
       });
-      Assert.True(expr9.PolynomialGPE(x));
-      Assert.True(expr9.PolynomialGPE(y));
+      Assert.True(expr9.IsPolynomialGPE(x));
+      Assert.True(expr9.IsPolynomialGPE(y));
       Assert.Equal(2, expr9.DegreeGPE(x));
 
       // Case 10: GPE with function coefficient ln(x)*y
@@ -595,8 +595,27 @@ namespace CAS.UT
         new ASTNode(Token.Function("ln"), new List<ASTNode> { x }),
         y
       });
-      Assert.True(expr10.PolynomialGPE(y));
+      Assert.True(expr10.IsPolynomialGPE(y));
       Assert.Equal(1, expr10.DegreeGPE(y));
+      
+      var notExpandedPoly = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        })
+      });
+
+      Assert.True(notExpandedPoly.IsPolynomialGPE(x));
+      Assert.False(notExpandedPoly.IsPolynomialGPE(x, false));
+      Assert.Equal(1, notExpandedPoly.OperandAt(0).DegreeGPE(x));
+      Assert.Equal(1, notExpandedPoly.OperandAt(1).DegreeGPE(x));
     }
 
     [Fact]
