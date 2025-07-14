@@ -1395,6 +1395,34 @@ namespace CAS.UT
 
       Assert.True(simplifier.AutomaticSimplify(q2) == simplifier.AutomaticSimplify(expectedQ2));
       Assert.True(simplifier.AutomaticSimplify(r2) == expectedR2);
+
+      // Numerator: x^2 + 1
+      var numerator3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      // Denominator: x^5 + x + 1 (degree higher than numerator)
+      var denominator3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("5")) }),
+        x,
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var result3 = simplifier.PolynomialDivision(numerator3, denominator3, x);
+      var q = result3[0];
+      var r = result3[1];
+
+      // Expected quotient: 0
+      var expectedQ = new ASTNode(Token.Integer("0"));
+
+      // Expected remainder: numerator itself
+      var expectedR = numerator3;
+
+      Assert.True(q == expectedQ);
+      Assert.True(r == expectedR);
     }
 
     [Fact]

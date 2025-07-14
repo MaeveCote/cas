@@ -20,6 +20,7 @@ using CAS.Core;
 using CAS.Core.EquationParsing;
 using Windows.ApplicationModel.Chat;
 using Windows.UI;
+using System.Numerics;
 
 namespace CAS.Desktop.Views
 {
@@ -484,6 +485,61 @@ namespace CAS.Desktop.Views
           simplifier.FormatTree(tree);
           var simplifiedTree = simplifier.Expand(tree);
           resultLatex = simplifiedTree.ToLatex();
+        }
+        catch (Exception ex)
+        {
+          ShowErrorPopup(ex.Message);
+          return;
+        }
+      }
+      else if (CurrentAction == "Polynomial div")
+      {
+        try
+        {
+          Logger.LogInfo("Running 'Polynomial Division'");
+
+          var tokenizerResult = StringTokenizer.Tokenize(equation);
+          var tree = ASTBuilder.ParseInfixToAST(tokenizerResult.TokenizedExpression);
+
+          simplifier.FormatTree(tree);
+          var variables = tree.GetVariables();
+          if (variables.Count != 1)
+            throw new ArgumentException("The expression contains multiple variables. Division is only supported with 1 variable.");
+          if (tree.Kind() != "/")
+            throw new ArgumentException("The expression is not a division, 'p(x) / q(x)' is the only supported format.");
+
+          var divider = new ASTNode(tree.OperandAt(1));
+          var divisionResult = simplifier.PolynomialDivision(tree.OperandAt(0), tree.OperandAt(1), new ASTNode(Token.Variable(variables.First().stringValue)));
+
+          ASTNode finalResulTree;
+          if (divisionResult[0].Token.Type is IntegerNum num1 && num1.intVal == 0)
+          {
+            // Undivisable
+            finalResulTree = new ASTNode(Token.Operator("/"), new List<ASTNode>
+            {
+              divisionResult[1],
+              divider
+            });
+          }
+          else if (divisionResult[1].Token.Type is IntegerNum num2 && num2.intVal == 0)
+          {
+            // No remainder
+            finalResulTree = divisionResult[0];
+          }
+          else
+          {
+            finalResulTree = new ASTNode(Token.Operator("+"), new List<ASTNode>
+            {
+              divisionResult[0],
+              new ASTNode(Token.Operator("/"), new List<ASTNode>
+              {
+                divisionResult[1],
+                divider
+              })
+            });
+          }
+
+          resultLatex = finalResulTree.ToLatex();
         }
         catch (Exception ex)
         {
