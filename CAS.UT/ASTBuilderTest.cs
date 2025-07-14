@@ -249,8 +249,8 @@ namespace CAS.UT
 
       var expected2 = new ASTNode(Token.Function("log"), new List<ASTNode>
       {
-          new ASTNode(Token.Number("100"), new List<ASTNode>()),
-          new ASTNode(Token.Number("10"), new List<ASTNode>())
+          new ASTNode(Token.Number("10"), new List<ASTNode>()),
+          new ASTNode(Token.Number("100"), new List<ASTNode>())
       });
 
       var expected3 = new ASTNode(Token.Function("sqrt"), new List<ASTNode>

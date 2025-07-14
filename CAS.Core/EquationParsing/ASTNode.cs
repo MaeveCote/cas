@@ -14,7 +14,6 @@ namespace CAS.Core.EquationParsing
   public class ASTNode
   {
     public Token Token { get; set; }
-    public ASTNode? Parent { get; set; }
     public List<ASTNode> Children { get; set; }
 
     /// <summary>
@@ -23,10 +22,7 @@ namespace CAS.Core.EquationParsing
     public ASTNode(Token token, List<ASTNode> children)
     {
       Token = token;
-      Parent = null;
       Children = children;
-      foreach (ASTNode n in Children)
-        n.Parent = this;
     }
 
     /// <summary>
@@ -35,7 +31,6 @@ namespace CAS.Core.EquationParsing
     public ASTNode(Token token)
     {
       Token = token;
-      Parent = null;
       Children = new List<ASTNode>();
     }
     
@@ -44,7 +39,7 @@ namespace CAS.Core.EquationParsing
     /// </summary>
     public ASTNode(ASTNode other)
     {
-      Token = other.Token; // Assuming Token is immutable or copied correctly
+      Token = other.Token;
       Children = other.Children.Select(child => new ASTNode(child)).ToList();
     }
 
@@ -161,6 +156,7 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the terms of a product, a unary product if it is an operator or Undefined otherwise.
     /// </summary>
+    /// <remarks>To get a list of terms do : node.Terms().Children</remarks>
     /// <returns>A product without the constant.</returns>
     public ASTNode Terms()
     {
@@ -185,10 +181,12 @@ namespace CAS.Core.EquationParsing
     /// <summary>
     /// Returns the constant of a product, 1 if it is an operator or Undefined otherwise.
     /// </summary>
-    /// <remarks>To get a list of terms do : node.Terms().Children</remarks>
     /// <returns></returns>
     public ASTNode Const()
     {
+      if (IsConstant())
+        return new ASTNode(this);
+
       if (Token.Type is Operator op)
       {
         if (op.stringValue == "*")
@@ -318,7 +316,7 @@ namespace CAS.Core.EquationParsing
 
     #endregion
 
-    #region Standard operators
+    #region Standard Operators
 
     public static bool operator ==(ASTNode left, ASTNode right)
     {
@@ -337,6 +335,236 @@ namespace CAS.Core.EquationParsing
     }
     public static bool operator <(ASTNode u, ASTNode v) => Compare(u, v);
     public static bool operator >(ASTNode u, ASTNode v) => Compare(v, u);
+
+    #endregion
+
+    #region Primitive Polynomial Operators
+
+    /// <summary>
+    /// Determines wheter the tree rooted at this node is General Polynomial Expression (GPE) in the given variable.
+    /// </summary>
+    public bool IsPolynomialGPE(ASTNode x, bool expand = true)
+    {
+      var simplifier = new Simplifier();
+      var expanded = new ASTNode(this);
+
+      if (expand)
+        expanded = simplifier.Expand(expanded);
+
+      if (expanded.Kind() == "+" || expanded.Kind() == "-")
+      {
+        foreach (var child in expanded.Children)
+        {
+          if (!child.IsPolynomialGME(x)) return false;
+        }
+        return true;
+      }
+
+      return expanded.IsPolynomialGME(x);
+    }
+
+    private bool IsPolynomialGME(ASTNode x)
+    {
+      if (IsConstant() || IsSymbol()) return true;
+      if (IsPower())
+      {
+        if (!OperandAt(0).IsPolynomialGME(x)) return false;
+        if (OperandAt(1).Token.Type is IntegerNum num && num.intVal >= 0) return true;
+        return false;
+      }
+
+      if (IsFunction())
+      {
+        foreach (var child in Children)
+          if (!child.FreeOf(x)) return false;
+        return true;
+      }
+
+      if (IsProduct())
+      {
+        bool foundVariablePart = false;
+        foreach (var child in Children)
+        {
+          if (!child.FreeOf(x))
+          {
+            if (foundVariablePart) return false; 
+            if (!child.IsPolynomialGME(x)) return false;
+            foundVariablePart = true;
+          }
+        }
+
+        return true;
+      }
+      // Fallback
+      return false;
+    }
+
+    /// <summary>
+    /// Calculates the degree of the GPE in 'x' represented by this node.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GPE.</remarks>
+    public int DegreeGPE(ASTNode x)
+    {
+      // Expanded to separate sum terms
+      var simplifier = new Simplifier();
+      var expanded = new ASTNode(this);
+      expanded = simplifier.Expand(expanded);
+
+      if (expanded.IsConstant())
+        return 0;
+
+      if (expanded.IsSymbol())
+        return expanded == x ? 1 : 0;
+
+      if (expanded.Kind() == "+" || expanded.Kind() == "-")
+      {
+        int maxDegree = 0;
+        foreach (var child in expanded.Children)
+        {
+          maxDegree = Math.Max(maxDegree, child.DegreeGME(x));
+        }
+        return maxDegree;
+      }
+
+      return expanded.DegreeGME(x);
+    }
+
+    private int DegreeGME(ASTNode x)
+    {
+      if (IsConstant())
+        return 0;
+
+      if (IsSymbol())
+        return this == x ? 1 : 0;
+
+      if (IsPower())
+      {
+        if (OperandAt(0) == x && OperandAt(1).Token.Type is IntegerNum num)
+          return num.intVal;
+        return 0;
+      }
+
+      if (IsProduct())
+      {
+        int deg = 0;
+        foreach (var child in Children)
+        {
+          deg += child.DegreeGME(x);
+        }
+        return deg;
+      }
+
+      return 0;
+    }
+
+    /// <summary>
+    /// Returns the sum of the coefficients of the degree 'deg' terms in the GPE rooted at this node in variable 'x'.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GPE</remarks>
+    public ASTNode CoefficientGPE(ASTNode x, int deg)
+    {
+      // Expanded to get a sum of GME
+      var simplifier = new Simplifier();
+      var expanded = new ASTNode(this);
+      expanded = simplifier.Expand(expanded);
+
+      if (expanded.IsConstant())
+        if (deg == 0) return expanded;
+
+
+      if (expanded.IsSymbol())
+      {
+        if (expanded == x && deg == 1) return expanded;
+        if (deg == 0) return  expanded;
+        return new ASTNode(Token.Integer("0"));
+      }
+
+      List<ASTNode> GMEOfTargetDeg = new List<ASTNode>();
+      if (expanded.Kind() == "+" || expanded.Kind() == "-")
+      {
+        foreach (var child in expanded.Children)
+        {
+          if (child.DegreeGME(x) == deg)
+            GMEOfTargetDeg.Add(child.CoefficientGME(x));
+        }
+
+        if (GMEOfTargetDeg.Count() == 0)
+          return new ASTNode(Token.Integer("0"));
+
+        return simplifier.AutomaticSimplify(new ASTNode(Token.Operator("+"), GMEOfTargetDeg));
+      }
+
+      if (expanded.DegreeGME(x) == deg)
+        return simplifier.AutomaticSimplify(new ASTNode(Token.Operator("+"), new List<ASTNode> { expanded.CoefficientGME(x) }));
+
+      return new ASTNode(Token.Integer("0"));
+    }
+
+    private ASTNode CoefficientGME(ASTNode x)
+    {
+      if (IsConstant())
+        return this;
+
+      if (IsSymbol())
+        return this == x ? new ASTNode(Token.Integer("1")) : this;
+
+      if (IsPower())
+      {
+        if (OperandAt(0) == x)
+          return new ASTNode(Token.Integer("1"));
+        return OperandAt(0).CoefficientGME(x);
+      }
+
+      if (IsProduct())
+      {
+        List<ASTNode> coeffs = new();
+        foreach (var child in Children)
+        {
+          if (child.FreeOf(x))
+            coeffs.Add(child);
+          else
+            coeffs.Add(child.CoefficientGME(x));
+        }
+
+        if (coeffs.Count == 1)
+          return coeffs[0];
+
+        return new ASTNode(Token.Operator("*"), coeffs);
+      }
+
+      // Fallback: if doesn't match any, return 1
+      return new ASTNode(Token.Integer("1"));
+    }
+
+    /// <summary>
+    /// Returns the sum of the leading coefficients of the GPE rooted at this node in the variable 'x'.
+    /// </summary>
+    /// <remarks>This operator assumes the node is in fact a GPE</remarks>
+    public ASTNode LeadingCoefficient(ASTNode x)
+    {
+      var deg = DegreeGPE(x);
+      return CoefficientGPE(x, deg);
+    }
+
+    /// <summary>
+    /// Compiles the variables in this equation.
+    /// </summary>
+    public HashSet<Variable> GetVariables()
+    {
+      List<HashSet<Variable>> childrenVars = new List<HashSet<Variable>>();
+      foreach (var child in Children)
+        childrenVars.Add(child.GetVariables());
+
+      HashSet<Variable> vars = new HashSet<Variable>();
+      if (Token.Type is Variable var)
+        vars.Add(var);
+
+      foreach (var childVars in childrenVars)
+        foreach (var childVar in childVars)
+          vars.Add(childVar);
+
+      return vars;
+    }
 
     #endregion
 
@@ -360,7 +588,17 @@ namespace CAS.Core.EquationParsing
         return num.value > 0;
       return false;
     }
- 
+
+    #endregion
+
+    #region Builders
+
+    private static ASTNode UnaryProduct(ASTNode v) => new(Token.Operator("*"), new() { v });
+    private static ASTNode UnarySum(ASTNode v) => new(Token.Operator("+"), new() { v });
+    // private static ASTNode Factorial(ASTNode v) => new(Token.Factorial(), new() { v });
+    private static ASTNode PromoteToPower(ASTNode v) => new(Token.Operator("^"), new() { v, new(Token.Integer("1")) });
+    public static ASTNode NewUndefined() => new ASTNode(Token.Undefined());
+
     #endregion
 
     public override bool Equals(object obj)
@@ -550,16 +788,6 @@ namespace CAS.Core.EquationParsing
       return a.Length - b.Length;
     }
 
-    #region Builders
-
-    private static ASTNode UnaryProduct(ASTNode v) => new(Token.Operator("*"), new() { v });
-    private static ASTNode UnarySum(ASTNode v) => new(Token.Operator("+"), new() { v });
-    // private static ASTNode Factorial(ASTNode v) => new(Token.Factorial(), new() { v });
-    private static ASTNode PromoteToPower(ASTNode v) => new(Token.Operator("^"), new() { v, new(Token.Integer("1")) });
-    public static ASTNode NewUndefined() => new ASTNode(Token.Undefined());
-
-    #endregion
-
     public override string ToString()
     {
       return ToString(0);
@@ -578,7 +806,9 @@ namespace CAS.Core.EquationParsing
       return result;
     }
 
-
+    /// <summary>
+    /// Converts the tree to a LaTeX string for display.
+    /// </summary>
     public string ToLatex()
     {
       // Helper: wrap in parentheses if child is sum or product

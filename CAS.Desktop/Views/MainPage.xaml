@@ -82,6 +82,15 @@
                 MinWidth="120"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
+            <ToggleButton x:Name="PolynomialDivisionToggle"
+                Content="Polynomial div"
+                Click="OnClickActionToggle"
+                Margin="0,0,0,10"
+                Padding="12,6"
+                FontSize="16"
+                MinWidth="120"
+                Background="{ThemeResource Surface1}"
+                Foreground="{ThemeResource TextBrush}"/>
         </StackPanel>
 
         <!-- Main UI -->

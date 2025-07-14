@@ -15,12 +15,23 @@ namespace CAS.Core.EquationParsing
     {
       stringValue = _stringValue;
     }
+
     public override string ToString()
     {
       return $"Token('{stringValue}')";
     }
+
+    public override bool Equals(object? obj)
+    {
+      return obj is Variable v && stringValue == v.stringValue;
+    }
+
+    public override int GetHashCode()
+    {
+      return stringValue.GetHashCode();
+    }
   }
-  
+
   public class Undefined : TokenType
   {
     public Undefined() : base("Undefined") { }

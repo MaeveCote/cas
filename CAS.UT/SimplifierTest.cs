@@ -64,7 +64,7 @@ namespace CAS.UT
       {
         new ASTNode(Token.Number("3.5")),
         new ASTNode(Token.Number("2")),
-        new ASTNode(Token.Number("0.5")) 
+        new ASTNode(Token.Number("0.5"))
       });
 
       simplifier.FormatTree(tree2);
@@ -164,6 +164,8 @@ namespace CAS.UT
       simplifier.FormatTree(tree);
       Assert.True(tree == expected);
     }
+
+    #region RNE Simplify
 
     [Fact]
     public void SimplifyRationalNumber()
@@ -320,6 +322,10 @@ namespace CAS.UT
 
       Assert.Throws<ArgumentException>(() => simplifier.SimplifyRNE(invalid));
     }
+
+    #endregion
+
+    #region Automatic Simplify
 
     [Fact]
     public void AutomaticSimplify_TrivialEquations()
@@ -525,7 +531,7 @@ namespace CAS.UT
     {
       var simplifier = new Simplifier();
 
-      // ((2 * x + 3 * x) + (x^2 + x^2)) => 5x + 2x^2
+      // ((2 * x + 3 * x) + (x^2 + x^2)) => x(5 + 2x^2)
       var expr1 = new ASTNode(Token.Operator("+"), new()
       {
         new ASTNode(Token.Operator("+"), new()
@@ -555,20 +561,16 @@ namespace CAS.UT
           })
         })
       });
-      var expected1 = new ASTNode(Token.Operator("+"), new()
+      var expected1 = new ASTNode(Token.Operator("*"), new List<ASTNode>
       {
-        new ASTNode(Token.Operator("*"), new()
+        new ASTNode(Token.Variable("x")),
+        new ASTNode(Token.Operator("+"), new()
         {
           new ASTNode(Token.Integer("5")),
-          new ASTNode(Token.Variable("x"))
-        }),
-        new ASTNode(Token.Operator("*"), new()
-        {
-          new ASTNode(Token.Integer("2")),
-          new ASTNode(Token.Operator("^"), new()
+          new ASTNode(Token.Operator("*"), new()
           {
-            new ASTNode(Token.Variable("x")),
-            new ASTNode(Token.Integer("2"))
+            new ASTNode(Token.Integer("2")),
+            new ASTNode(Token.Variable("x"))
           })
         })
       });
@@ -665,7 +667,7 @@ namespace CAS.UT
 
       // --- CASE 1: Deeply nested sum and product ---
       // ((((x + x) + (x + x)) + ((2 * x) + (3 * x))) + (((x ^ 2) + (2 * x ^ 2)) + (x + (x + x))))
-      // Expected: 12x + 3x^2
+      // Expected: 3x(4 + x)
       var expr1 = new ASTNode(Token.Operator("+"), new()
       {
         new ASTNode(Token.Operator("+"), new()
@@ -728,23 +730,15 @@ namespace CAS.UT
         })
       });
 
-      var expected1 = new ASTNode(Token.Operator("+"), new()
-      {
-        new ASTNode(Token.Operator("*"), new()
+      var expected1 = new ASTNode(Token.Operator("*"), new List<ASTNode> { 
+        new ASTNode(Token.Integer("3")),
+        new ASTNode(Token.Variable("x")),
+        new ASTNode(Token.Operator("+"), new()
         {
-          new ASTNode(Token.Integer("12")),
-          new ASTNode(Token.Variable("x"))
-        }),
-        new ASTNode(Token.Operator("*"), new()
-        {
-          new ASTNode(Token.Integer("3")),
-          new ASTNode(Token.Operator("^"), new()
-          {
-            new ASTNode(Token.Variable("x")),
-            new ASTNode(Token.Integer("2"))
-          })
+          new ASTNode(Token.Integer("4")),
+          new ASTNode(Token.Variable("x")),
         })
-      });
+      }); 
 
       var result1 = simplifier.AutomaticSimplify(expr1);
       Assert.True(result1 == expected1);
@@ -842,10 +836,10 @@ namespace CAS.UT
         new ASTNode(Token.Integer("2"))
       });
 
-          Assert.True(simplifier.AutomaticSimplify(expr3) == expected3);
+      Assert.True(simplifier.AutomaticSimplify(expr3) == expected3);
 
-          // Case 4: ((x^(1/2))^(1/2))^(1/2) => x^(1/8)
-          var half = new ASTNode(Token.Fraction(), new List<ASTNode>
+      // Case 4: ((x^(1/2))^(1/2))^(1/2) => x^(1/8)
+      var half = new ASTNode(Token.Fraction(), new List<ASTNode>
       {
         new ASTNode(Token.Integer("1")),
         new ASTNode(Token.Integer("2"))
@@ -875,6 +869,131 @@ namespace CAS.UT
       });
 
       Assert.True(simplifier.AutomaticSimplify(expr4) == expected4);
+    }
+
+    [Fact]
+    public void AutomaticSimplify_RootSimplify()
+    {
+      var simplifier = new Simplifier();
+
+      var power1 = new ASTNode(Token.Operator("^"), new List<ASTNode> {
+        new ASTNode(Token.Integer("4")), 
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+      var result1 = new ASTNode(Token.Integer("2"));
+
+      Assert.True(simplifier.AutomaticSimplify(power1) == result1);
+
+      var power2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("27")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("3"))
+        })
+      });
+      var result2 = new ASTNode(Token.Integer("3"));
+      Assert.True(simplifier.AutomaticSimplify(power2) == result2);
+
+      var power3 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("144")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+      var result3 = new ASTNode(Token.Integer("12"));
+      Assert.True(simplifier.AutomaticSimplify(power3) == result3);
+
+      var power4 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("7776")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("5"))
+        })
+      });
+      var result4 = new ASTNode(Token.Integer("6"));
+      Assert.True(simplifier.AutomaticSimplify(power4) == result4);
+
+      var power5 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("7")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+      var result5 = new ASTNode(power5);
+      Assert.True(simplifier.AutomaticSimplify(power5) == result5);
+
+      var power6 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("8")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      var factor1 = new ASTNode(Token.Integer("2"));
+      var radicalPart1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("2")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      var result6 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        factor1,
+        radicalPart1
+      });
+
+      Assert.True(simplifier.AutomaticSimplify(power6) == result6);
+
+      // 162^(1/2) = 9 * 2^(1/2)
+      var power7 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("162")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      var factor2 = new ASTNode(Token.Integer("9"));
+      var radicalPart2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("2")),
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      var result7 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        factor2,
+        radicalPart2
+      });
+
+      Assert.True(simplifier.AutomaticSimplify(power7) == result7);
     }
 
     [Fact]
@@ -1080,7 +1199,7 @@ namespace CAS.UT
         new ASTNode(Token.Operator("+"), new()
         {
           new ASTNode(Token.Operator("*"), new()
-          {     
+          {
             new ASTNode(Token.Fraction(), new()
             {
               new ASTNode(Token.Integer("1")),
@@ -1096,6 +1215,10 @@ namespace CAS.UT
       var res = simplifier.AutomaticSimplify(expr2);
       Assert.True(simplifier.AutomaticSimplify(expr2) == expected2);
     }
+
+    #endregion
+
+    #region Expand
 
     [Fact]
     public void Expand_SimplifyProducts()
@@ -1198,5 +1321,682 @@ namespace CAS.UT
 
       Assert.True(simplifier.Expand(expr2) == expected2);
     }
+
+    #endregion
+
+    #region Polynomials
+
+    [Fact]
+    public void PolynomialDivision_BasicCases()
+    {
+      var simplifier = new Simplifier();
+
+      var x = new ASTNode(Token.Variable("x"));
+
+      // Example 1: (x^3 + 2x^2 + 4) / (x + 1)
+      var numerator = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("2")), new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }) }),
+        new ASTNode(Token.Integer("4"))
+      });
+
+      var denominator = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var result = simplifier.PolynomialDivision(numerator, denominator, x);
+      var quotient = result[0];
+      var remainder = result[1];
+
+      // Expected quotient: x^2 + x - 1
+      var expectedQuotient = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        x,
+        new ASTNode(Token.Integer("-1"))
+      });
+
+      // Expected remainder: 5
+      var expectedRemainder = new ASTNode(Token.Integer("5"));
+
+      Assert.True(simplifier.AutomaticSimplify(quotient) == simplifier.AutomaticSimplify(expectedQuotient));
+      Assert.True(simplifier.AutomaticSimplify(remainder) == expectedRemainder);
+
+      // Example 2: (x^2 + 3x + 2) / (x + 1)
+      var num2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("3")), x }),
+        new ASTNode(Token.Integer("2"))
+      });
+
+      var den2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var result2 = simplifier.PolynomialDivision(num2, den2, x);
+      var q2 = result2[0];
+      var r2 = result2[1];
+
+      // Expected quotient: x + 2
+      var expectedQ2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("2"))
+      });
+
+      // Expected remainder: 0
+      var expectedR2 = new ASTNode(Token.Integer("0"));
+
+      Assert.True(simplifier.AutomaticSimplify(q2) == simplifier.AutomaticSimplify(expectedQ2));
+      Assert.True(simplifier.AutomaticSimplify(r2) == expectedR2);
+
+      // Numerator: x^2 + 1
+      var numerator3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      // Denominator: x^5 + x + 1 (degree higher than numerator)
+      var denominator3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("5")) }),
+        x,
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var result3 = simplifier.PolynomialDivision(numerator3, denominator3, x);
+      var q = result3[0];
+      var r = result3[1];
+
+      // Expected quotient: 0
+      var expectedQ = new ASTNode(Token.Integer("0"));
+
+      // Expected remainder: numerator itself
+      var expectedR = numerator3;
+
+      Assert.True(q == expectedQ);
+      Assert.True(r == expectedR);
+    }
+
+    [Fact]
+    public void PolynomialDivision_ComplexCases()
+    {
+      var simplifier = new Simplifier();
+
+      var x = new ASTNode(Token.Variable("x"));
+
+      // Example 1: (2x^4 + 3x^3 + x + 5) / (x^2 + 1)
+      var numerator1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("2")), new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("4")) }) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("3")), new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) }) }),
+        x,
+        new ASTNode(Token.Integer("5"))
+      });
+
+      var denominator1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var result1 = simplifier.PolynomialDivision(numerator1, denominator1, x);
+      var q1 = result1[0];
+      var r1 = result1[1];
+
+      // Expected quotient: 2x^2 + 3x - 2
+      var expectedQ1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("2")), new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("3")), x }),
+        new ASTNode(Token.Integer("-2"))
+      });
+
+      // Expected remainder: -2x + 7
+      var expectedR1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-2")), x }),
+        new ASTNode(Token.Integer("7"))
+      });
+
+      Assert.True(simplifier.AutomaticSimplify(q1) == simplifier.AutomaticSimplify(expectedQ1));
+      Assert.True(simplifier.AutomaticSimplify(r1) == simplifier.AutomaticSimplify(expectedR1));
+
+
+      // Example 2: (x^5 - x^4 + x^2 - x + 1) / (x^2 + 1)
+      var numerator2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("5")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("4")) }) }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), x }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var denominator2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var result2 = simplifier.PolynomialDivision(numerator2, denominator2, x);
+      var q2 = result2[0];
+      var r2 = result2[1];
+
+      // Expected quotient: x^3 - x^2 - x + 2
+      var expectedQ2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), x }),
+        new ASTNode(Token.Integer("2"))
+      });
+
+      // Expected remainder: -1
+      var expectedR2 = new ASTNode(Token.Integer("-1"));
+
+      Assert.True(simplifier.AutomaticSimplify(q2) == simplifier.AutomaticSimplify(expectedQ2));
+      Assert.True(simplifier.AutomaticSimplify(r2) == simplifier.AutomaticSimplify(expectedR2));
+    }
+
+    [Fact]
+    public void PolynomialExpansion()
+    {
+      var simplifier = new Simplifier();
+
+      var x = new ASTNode(Token.Variable("x"));
+      var t = new ASTNode(Token.Variable("t")); // used for expansion symbol
+
+      // u = x^5 + 11x^4 + 51x^3 + 124x^2 + 159x + 86
+      var u = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("5")) }),
+
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("11")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("4")) })
+        }),
+
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("51")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) })
+        }),
+
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("124")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) })
+        }),
+
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("159")),
+          x
+        }),
+
+        new ASTNode(Token.Integer("86"))
+      });
+
+      // v = x^2 + 4x + 5
+      var v = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("4")), x }),
+        new ASTNode(Token.Integer("5"))
+      });
+
+      var expansion = simplifier.PolynomialExpansion(u, v, x, t);
+
+      // Expected: (x + 3) * v^2 + (x + 2) * v + (x + 1)
+      var vSquared = new ASTNode(Token.Operator("^"), new List<ASTNode> { v, new ASTNode(Token.Integer("2")) });
+
+      var term1 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { t, new ASTNode(Token.Integer("2")) })
+      });
+
+      var term2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        t
+      });
+
+      var term3 = new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("1")) });
+
+      var expected = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        term1,
+        term2,
+        term3
+      });
+
+      Assert.True(expansion == simplifier.Expand(expected));
+    }
+
+    [Fact]
+    public void PolynomialFactorization_CommonFactors()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+
+      // 1️⃣ 5 + 15x
+      var poly1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("5")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("15")),
+          x
+        })
+      });
+
+      var expectedCommon1 = new ASTNode(Token.Integer("5"));
+      var expectedRest1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("3")),
+          x
+        })
+      });
+      var expected1 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        expectedCommon1,
+        expectedRest1
+      });
+
+      var factorized1 = simplifier.PolynomialFactorization(poly1, x);
+      Assert.True(factorized1 == expected1);
+
+      // 2️⃣ 3x^6
+      var poly2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("3")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("6"))
+        })
+      });
+
+      var expected2 = poly2;
+      var factorized2 = simplifier.PolynomialFactorization(poly2, x);
+      Assert.True(factorized2 == expected2);
+
+      // 3️⃣ 2x + 4x^2 + 8x^4
+      var poly3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          x
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("4")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("2"))
+          })
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("8")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("4"))
+          })
+        })
+      });
+
+      var expectedCommon3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("2")),
+        x
+      });
+      var expectedRest3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          x
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("4")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("3"))
+          })
+        })
+      });
+      var expected3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        expectedCommon3,
+        expectedRest3
+      });
+      expected3 = simplifier.AutomaticSimplify(expected3);
+
+      var factorized3 = simplifier.PolynomialFactorization(poly3, x);
+      Assert.True(factorized3 == expected3);
+
+      // 4️⃣ 1/2 * x^3 + x^4 + x^6
+      var poly4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("1")),
+            new ASTNode(Token.Integer("2"))
+          }),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("3"))
+          })
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("4"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("6"))
+        })
+      });
+
+      var expectedCommon4 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("3"))
+      });
+      var expectedRest4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        }),
+        x,
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        })
+      });
+      var expected4 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        expectedCommon4,
+        expectedRest4
+      });
+
+      var factorized4 = simplifier.PolynomialFactorization(poly4, x);
+      Assert.True(factorized4 == expected4);
+    }
+
+    [Fact]
+    public void PolynomialFactorization_QuadraticCases()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+
+      // 1️⃣ x^2 + 2x + 1 = (x + 1)^2
+      var poly1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("2")), x }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var expected1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Integer("2"))
+      });
+
+      var factorized1 = simplifier.PolynomialFactorization(poly1, x);
+      Assert.True(factorized1 == expected1);
+
+      // 2️⃣ x^2 + 6x + 8 = (x + 2)(x + 4)
+      var poly2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("6")), x }),
+        new ASTNode(Token.Integer("8"))
+      });
+
+      var expected2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("4"))
+        })
+      });
+
+      var factorized2 = simplifier.PolynomialFactorization(poly2, x);
+      Assert.True(factorized2 == expected2);
+
+      // 3️⃣ x^2 + 1 = x^2 + 1 (irreducible over reals)
+      var poly3 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var expected3 = poly3;
+      var factorized3 = simplifier.PolynomialFactorization(poly3, x);
+      Assert.True(factorized3 == expected3);
+
+      // 4️⃣ x^2 - 1 = (x + 1)(x - 1)
+      var poly4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), new ASTNode(Token.Integer("1")) })
+      });
+
+      var expected4 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("1"))
+        }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        })
+      });
+
+      var factorized4 = simplifier.PolynomialFactorization(poly4, x);
+      Assert.True(factorized4 == expected4);
+
+      // 5️⃣ x^2 - 2 = (x + sqrt(2))(x - sqrt(2))
+      var poly5 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), new ASTNode(Token.Integer("2")) })
+      });
+
+      var sqrt2 = new ASTNode(Token.Operator("^"), new List<ASTNode> 
+      { 
+        new ASTNode(Token.Integer("2")), new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2"))
+        }) 
+      });
+
+      var expected5 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, sqrt2 }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Integer("-1")), sqrt2
+        }) })
+      });
+
+      var factorized5 = simplifier.PolynomialFactorization(poly5, x);
+      Assert.True(factorized5 == expected5);
+
+      var poly6 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("2"))
+      });
+
+      var expected6 = new ASTNode(poly6);
+
+      var factorized6 = simplifier.PolynomialFactorization(poly6, x);
+      Assert.True(factorized6 == expected6);
+    }
+
+    [Fact]
+    public void PolynomialSimplification_FactorExamples()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+
+      // x^2 + 2x + 1 => (x + 1)^2
+      var poly1 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("2")), x }),
+        new ASTNode(Token.Integer("1"))
+      });
+
+      var expected1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("1")) }),
+        new ASTNode(Token.Integer("2"))
+      });
+
+      Assert.True(simplifier.PolynomialSimplify(poly1, x) == expected1);
+
+      // (x + 3)(x^2 + 6x + 8) => (x + 2)(x + 3)(x + 4)
+      var poly2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+          new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("6")), x }),
+          new ASTNode(Token.Integer("8"))
+        })
+      });
+
+      var expected2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("4")) })
+      });
+
+      Assert.True(simplifier.PolynomialSimplify(poly2, x) == expected2);
+
+      // (x + 2)(x^2 + 6x + 8) => (x + 2)^2 * (x + 4)
+      var poly3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+          new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("6")), x }),
+          new ASTNode(Token.Integer("8"))
+        })
+      });
+
+      var expected3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("4")) })
+      });
+
+      Assert.True(simplifier.PolynomialSimplify(poly3, x) == expected3);
+
+      // 4 + 5x^5 + 3x * (2x^3 - 2) => 4 + 5x^5 + 6x^2 * (x + 1)(x - 1)
+      var poly4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("4")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("5")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("5")) })
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("3")),
+          x,
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("*"), new List<ASTNode>
+            {
+              new ASTNode(Token.Integer("2")),
+              new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("3")) })
+            }),
+            new ASTNode(Token.Operator("*"), new List<ASTNode>
+            {
+              new ASTNode(Token.Integer("-2")),
+              x
+            })
+          })
+        })
+      });
+
+      var expected4 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("4")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("5")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("5")) })
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("6")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> { x, new ASTNode(Token.Integer("2")) }),
+          new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("1")) }),
+          new ASTNode(Token.Operator("+"), new List<ASTNode> { x, new ASTNode(Token.Integer("-1")) })
+        })
+      });
+
+      Assert.True(simplifier.PolynomialSimplify(poly4, x) == expected4);
+    }
+
+    #endregion
   }
 }

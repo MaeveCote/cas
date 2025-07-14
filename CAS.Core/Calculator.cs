@@ -142,6 +142,28 @@ namespace CAS.Core
     }
 
     /// <summary>
+    /// Computes the GCD of the set of numbers in nums.
+    /// </summary>
+    /// <exception cref="ArgumentException">Cannot compute the GCD of an empty set.</exception>
+    public static int SetGCD(List<int> nums)
+    {
+      int? currentGcd = null;
+      foreach (var num in nums)
+      {
+        if (currentGcd == null)
+          currentGcd = num;
+        else
+          currentGcd = GCD(currentGcd.Value, num);
+      }
+
+      //
+      if (currentGcd == null)
+        throw new ArgumentException("Cannot compute GCD of an empty set.");
+
+      return currentGcd.Value;
+    }
+
+    /// <summary>
     /// Evaluates the product of two rationnal numbers.
     /// </summary>
     /// <returns>A rationnal number</returns>
@@ -310,7 +332,6 @@ namespace CAS.Core
 
         return new ASTNode(Token.Undefined());
       }
-
     }
 
     /// <summary>
@@ -335,6 +356,24 @@ namespace CAS.Core
         throw new ArgumentException("The 'node' should be a rationnal number");
 
       return frac;
+    }
+
+    /// <summary>
+    /// Finds if a is a power of b.
+    /// </summary>
+    public static bool IsPowerOf(int a, int b, int MaxIterations = 30)
+    {
+      int power = a;
+      for (int i = 1; i <= MaxIterations; i++)
+      {
+        if (a == b)
+          return true;
+        if (power > b)
+          break;
+        power *= a;
+      }
+
+      return false;
     }
 
     #region Private methods
