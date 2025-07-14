@@ -75,6 +75,17 @@ namespace CAS.Core
     }
 
     /// <summary>
+    /// Will remove the negative exponent in a tree to make it ready for printing in LaTeX.
+    /// </summary>
+    /// <remarks>This should be applied after an <see cref="Simplifier.AutomaticSimplify(ASTNode, bool)"/> 
+    /// since it converts division to negative exponents.</remarks>
+    /// <param name="root">The root of the tree</param>
+    public void PostFormatTree(ASTNode root)
+    {
+      
+    }
+
+    /// <summary>
     /// Simplify a rational number into an irreducible fraction or an integer.
     /// </summary>
     /// <param name="input">A rationnal number. Either a fraction or an integer</param>
