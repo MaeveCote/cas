@@ -465,6 +465,7 @@ namespace CAS.Desktop.Views
 
           simplifier.FormatTree(tree);
           var simplifiedTree = simplifier.AutomaticSimplify(tree);
+          simplifier.PostFormatTree(simplifiedTree);
           resultLatex = simplifiedTree.ToLatex();
         }
         catch (Exception ex)
@@ -484,6 +485,7 @@ namespace CAS.Desktop.Views
 
           simplifier.FormatTree(tree);
           var simplifiedTree = simplifier.Expand(tree);
+          simplifier.PostFormatTree(simplifiedTree);
           resultLatex = simplifiedTree.ToLatex();
         }
         catch (Exception ex)
@@ -539,6 +541,7 @@ namespace CAS.Desktop.Views
             });
           }
 
+          simplifier.PostFormatTree(finalResulTree);
           resultLatex = finalResulTree.ToLatex();
         }
         catch (Exception ex)
