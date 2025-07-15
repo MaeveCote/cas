@@ -839,8 +839,21 @@ namespace CAS.Core.EquationParsing
       }
       if (IsFunction())
       {
-        var args = string.Join(", ", Children.Select(c => c.ToLatex()));
-        return $"{Token.Type.stringValue}\\left({args}\\right)";
+        if (Kind() == "nroot")
+        {
+          var inside = Children[0].ToLatex();
+          var degree = Children[1].ToLatex();
+
+          if (degree == "2")
+            return $"\\sqrt{{{inside}}}";
+          else
+            return $"\\sqrt[{degree}]{{{inside}}}";
+        }
+        else
+        {
+          var args = string.Join(", ", Children.Select(c => c.ToLatex()));
+          return $"{Token.Type.stringValue}\\left({args}\\right)";
+        }
       }
       if (Token.Type is Operator op)
       {

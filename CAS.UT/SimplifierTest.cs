@@ -27,6 +27,8 @@ namespace CAS.UT
     private ASTNode Decimal(string val) =>
       new ASTNode(Token.Number(val), new List<ASTNode>());
 
+    #region Formatters
+
     [Fact]
     public void FormatTree()
     {
@@ -164,6 +166,598 @@ namespace CAS.UT
       simplifier.FormatTree(tree);
       Assert.True(tree == expected);
     }
+
+    [Fact]
+    public void PostFormatTree_Power()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+      var y = new ASTNode(Token.Variable("y"));
+
+      // x^(-1) => 1 / x
+      var power1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("-1"))
+      });
+
+      var expected1 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        x
+      });
+
+      simplifier.PostFormatTree(power1);
+      Assert.True(power1 == expected1);
+
+      // x^(-2) => 1 / (x^2)
+      var power2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("-2"))
+      });
+
+      var expected2 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      simplifier.PostFormatTree(power2);
+      Assert.True(power2 == expected2);
+
+      // x^(-2/3) => 1 / (x^(2/3))
+      var power3 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("-2")),
+          new ASTNode(Token.Integer("3"))
+        })
+      });
+
+      var expected3 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("2")),
+            new ASTNode(Token.Integer("3"))
+          })
+        })
+      });
+
+      simplifier.PostFormatTree(power3);
+      Assert.True(power3 == expected3);
+
+      // x^(-3y) => 1 / (x^(3 * y))
+      var power4 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("-3")),
+          y
+        })
+      });
+
+      var expected4 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Operator("*"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("3")),
+            y
+          })
+        })
+      });
+
+      simplifier.PostFormatTree(power4);
+      Assert.True(power4 == expected4);
+    }
+
+    [Fact]
+    public void PostFormatTree_Multiplication()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+      var y = new ASTNode(Token.Variable("y"));
+      var z = new ASTNode(Token.Variable("z"));
+      var v = new ASTNode(Token.Variable("v"));
+      var w = new ASTNode(Token.Variable("w"));
+
+      // x * y^(-1) => x / y
+      var mul1 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("-1"))
+        })
+      });
+
+      var expected1 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        x,
+        y
+      });
+
+      simplifier.PostFormatTree(mul1);
+      Assert.True(mul1 == expected1);
+
+      // x^(-1) * y^(-1) => 1 / (x * y)
+      var mul2 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("-1"))
+        })
+      });
+
+      var expected2 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          x,
+          y
+        })
+      });
+
+      simplifier.PostFormatTree(mul2);
+      Assert.True(mul2 == expected2);
+
+      // x * y * z => x * y * z (unchanged)
+      var mul3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        x,
+        y,
+        z
+      });
+
+      var expected3 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        x,
+        y,
+        z
+      });
+
+      simplifier.PostFormatTree(mul3);
+      Assert.True(mul3 == expected3);
+
+      // x^(-1) * y * z => (y * z) / x
+      var mul4 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        }),
+        y,
+        z
+      });
+
+      var expected4 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          y,
+          z
+        }),
+        x
+      });
+
+      simplifier.PostFormatTree(mul4);
+      Assert.True(mul4 == expected4);
+
+      // x * y^(-2) * z^(-3w) * v => (x * v) / (y^2 * z^(3w))
+      var mul5 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("-2"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          z,
+          new ASTNode(Token.Operator("*"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("-3")),
+            w
+          })
+        }),
+        v
+      });
+
+      var expected5 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          x,
+          v
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            y,
+            new ASTNode(Token.Integer("2"))
+          }),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            z,
+            new ASTNode(Token.Operator("*"), new List<ASTNode>
+            {
+              new ASTNode(Token.Integer("3")),
+              w
+            })
+          })
+        })
+      });
+
+      simplifier.PostFormatTree(mul5);
+      Assert.True(mul5 == expected5);
+    }
+
+    [Fact]
+    public void PostFormatTree_FullEquations()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+      var y = new ASTNode(Token.Variable("y"));
+
+      // Case 1: (x + 2)^(-2) => 1 / (x + 2)^2
+      var expr1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Integer("-2"))
+      });
+
+      var expected1 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("2"))
+          }),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      simplifier.PostFormatTree(expr1);
+      Assert.True(expr1 == expected1);
+
+      // Case 2: x^2 + x^(-1) => x^2 + 1/x
+      var expr2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        })
+      });
+
+      var expected2 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          x
+        })
+      });
+
+      simplifier.PostFormatTree(expr2);
+      Assert.True(expr2 == expected2);
+
+      // Case 3: (x + 3)^(-(x+4)) => 1 / (x + 3)^(x+4)
+      var expr3 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("-1")),
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("4"))
+          })
+        })
+      });
+
+      // The exponent simplifies to (x + 4) with negative sign
+      var expected3 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("3"))
+          }),
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("4"))
+          })
+        })
+      });
+
+      simplifier.PostFormatTree(expr3);
+      Assert.True(expr3 == expected3);
+
+      // Case 4: x^(-1) * y^2 * (x + 2)^(-3)
+      var expr4 = new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("-1"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("2"))
+          }),
+          new ASTNode(Token.Integer("-3"))
+        })
+      });
+
+      var expected4 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("2"))
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("+"), new List<ASTNode>
+            {
+              x,
+              new ASTNode(Token.Integer("2"))
+            }),
+            new ASTNode(Token.Integer("3"))
+          })
+        })
+      });
+
+      simplifier.PostFormatTree(expr4);
+      Assert.True(expr4 == expected4);
+
+      // Case 5: x^3 + y^(-1) + (x + 1)^(-2)
+      var expr5 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          y,
+          new ASTNode(Token.Integer("-1"))
+        }),
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            x,
+            new ASTNode(Token.Integer("1"))
+          }),
+          new ASTNode(Token.Integer("-2"))
+        })
+      });
+
+      var expected5 = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          x,
+          new ASTNode(Token.Integer("3"))
+        }),
+        new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          y
+        }),
+        new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("+"), new List<ASTNode>
+            {
+              x,
+              new ASTNode(Token.Integer("1"))
+            }),
+            new ASTNode(Token.Integer("2"))
+          })
+        })
+      });
+
+      simplifier.PostFormatTree(expr5);
+      Assert.True(expr5 == expected5);
+    }
+
+
+    [Fact]
+    public void PostFormatTree_ConvertRationalExponent()
+    {
+      var simplifier = new Simplifier();
+      var x = new ASTNode(Token.Variable("x"));
+      var y = new ASTNode(Token.Variable("y"));
+
+      // x^(1/2) => nroot(x, 2)
+      var power1 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      var expected1 = new ASTNode(Token.Function("nroot"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Integer("2"))
+      });
+
+      simplifier.PostFormatTree(power1);
+      Assert.True(power1 == expected1);
+
+      // x^(2/5) => x^(2/5) (no change)
+      var power2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          new ASTNode(Token.Integer("5"))
+        })
+      });
+
+      var expected2 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        x,
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("2")),
+          new ASTNode(Token.Integer("5"))
+        })
+      });
+
+      simplifier.PostFormatTree(power2);
+      Assert.True(power2 == expected2);
+
+      // (3x + 5 + 24*(x^2+1))^(1/5) => nroot(3x + 5 + 24*(x^2+1), 5)
+      var polyInner = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("3")),
+          x
+        }),
+        new ASTNode(Token.Integer("5")),
+        new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("24")),
+          new ASTNode(Token.Operator("+"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("^"), new List<ASTNode>
+            {
+              x,
+              new ASTNode(Token.Integer("2"))
+            }),
+            new ASTNode(Token.Integer("1"))
+          })
+        })
+      });
+
+      var power3 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        polyInner,
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Integer("5"))
+        })
+      });
+
+      var expected3 = new ASTNode(Token.Function("nroot"), new List<ASTNode>
+      {
+        polyInner,
+        new ASTNode(Token.Integer("5"))
+      });
+
+      simplifier.PostFormatTree(power3);
+      Assert.True(power3 == expected3);
+
+      // (x + y)^(-1/2) => 1 / nroot((x + y), 2))
+      var innerSum = new ASTNode(Token.Operator("+"), new List<ASTNode>
+      {
+        x,
+        y
+      });
+
+      var power4 = new ASTNode(Token.Operator("^"), new List<ASTNode>
+      {
+        innerSum,
+        new ASTNode(Token.Fraction(), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("-1")),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      var expected4 = new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        new ASTNode(Token.Integer("1")),
+        new ASTNode(Token.Function("nroot"), new List<ASTNode>
+        {
+          new ASTNode(innerSum),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
+
+      simplifier.PostFormatTree(power4);
+      Assert.True(power4 == expected4);
+    }
+
+    #endregion
 
     #region RNE Simplify
 

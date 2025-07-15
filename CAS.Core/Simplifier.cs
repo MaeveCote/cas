@@ -75,6 +75,115 @@ namespace CAS.Core
     }
 
     /// <summary>
+    /// Will format the tree to make it ready for printing in LaTeX.
+    /// Converts negative exponents to divisions and rational exponents to roots if possible.
+    /// </summary>
+    /// <remarks>This should be applied after an <see cref="Simplifier.AutomaticSimplify(ASTNode, bool)"/> 
+    /// since it converts division to negative exponents.</remarks>
+    /// <param name="root">The root of the tree</param>
+    public void PostFormatTree(ASTNode root)
+    {
+      // Format this node
+      // Firstly: Convert negative exponents to divisions
+      if (root.Kind() == "*")
+      {
+        // Find all the negative exponent children and transform the product to a division
+        List<ASTNode> numeratorChildren = new List<ASTNode>();
+        List<ASTNode> denominatorChildren = new List<ASTNode>();
+
+        foreach (var child in root.Children)
+        {
+          if (child.Kind() == "^")
+          {
+            var expNode = child.Exponent();
+            var expValue = expNode.Const().EvaluateAsDouble();
+
+            if (expValue < 0)
+            {
+              if (Math.Abs(expValue + 1) < EPSILON)
+              {
+                // Exponent is one
+                denominatorChildren.Add(child.Children[0]);
+              }
+              else
+              {
+                denominatorChildren.Add(new ASTNode(Token.Operator("^"), new List<ASTNode> {
+                  child.Children[0],
+                  AutomaticSimplify(new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), expNode }))
+                }));
+              }
+            }
+            else
+              numeratorChildren.Add(child);
+          }
+          else
+            numeratorChildren.Add(child);
+        }
+
+        if (denominatorChildren.Count != 0)
+        {
+          root.Token = Token.Operator("/");
+          root.Children = new List<ASTNode>();
+          if (numeratorChildren.Count == 0)
+            root.Children.Add(new ASTNode(Token.Integer("1")));
+          else if (numeratorChildren.Count == 1)
+            root.Children.Add(numeratorChildren[0]);
+          else
+            root.Children.Add(new ASTNode(Token.Operator("*"), numeratorChildren));
+
+          if (denominatorChildren.Count == 1)
+            root.Children.Add(denominatorChildren[0]);
+          else
+            root.Children.Add(new ASTNode(Token.Operator("*"), denominatorChildren));
+        }
+      }
+      else if (root.Kind() == "^")
+      {
+        var expNode = root.Exponent();
+        var expValue = expNode.Const().EvaluateAsDouble();
+
+        if (expValue < 0)
+        {
+          if (Math.Abs(expValue + 1) < EPSILON && expNode.IsConstant())
+          {
+            // Exponent is one
+            root.Token = Token.Operator("/");
+            root.Children[1] = root.Children[0];
+            root.Children[0] = new ASTNode(Token.Integer("1"));
+          }
+          else
+          {
+            root.Token = Token.Operator("/");
+            root.Children[1] = new ASTNode(Token.Operator("^"), new List<ASTNode> {
+              root.Children[0],
+              AutomaticSimplify(new ASTNode(Token.Operator("*"), new List<ASTNode> { new ASTNode(Token.Integer("-1")), expNode }))
+            });
+            root.Children[0] = new ASTNode(Token.Integer("1"));
+          }
+        }
+      }
+
+      // Secondly: Converts rational exponents of the form 1/n to the nroot function
+      if (root.Kind() == "^")
+      {
+        var expNode = root.Exponent();
+        if (expNode.Token.Type is Fraction)
+        {
+          var numDenum = Calculator.GetNumAndDenum(expNode);
+          if (numDenum[0] == 1)
+          {
+            root.Token = Token.Function("nroot");
+            root.Children[1] = new ASTNode(Token.Integer(numDenum[1].ToString()));
+          }
+        }  
+      }
+
+      // Format the children
+      foreach (var child in root.Children)
+        PostFormatTree(child);
+    }
+
+    /// <summary>
     /// Simplify a rational number into an irreducible fraction or an integer.
     /// </summary>
     /// <param name="input">A rationnal number. Either a fraction or an integer</param>
@@ -146,7 +255,7 @@ namespace CAS.Core
       if (input.Token.Type is Number || input.Token.Type is Variable)
         result = input;
       else if (input.Token.Type is Fraction)
-        result =  SimplifyRationalNumber(input);
+        result = SimplifyRationalNumber(input);
       else
       {
         // Simplify the nodes recursively
@@ -491,7 +600,7 @@ namespace CAS.Core
         var mMinusN = new ASTNode(Token.Integer((m - n).ToString()));
         q = AutomaticSimplify(new ASTNode(Token.Operator("+"), new List<ASTNode>
         {
-          q, new ASTNode(Token.Operator("*"), new List<ASTNode>{ 
+          q, new ASTNode(Token.Operator("*"), new List<ASTNode>{
             s, new ASTNode(Token.Operator("^"), new List<ASTNode> {
               new ASTNode(x), new ASTNode(mMinusN) }) })
         }), false);
@@ -1198,7 +1307,7 @@ namespace CAS.Core
       if (root.IsPower())
         ExpandPower(root);
     }
-    
+
     private void ExpandProduct(ASTNode root)
     {
       // Return if a unary product
@@ -1385,9 +1494,9 @@ namespace CAS.Core
         return [productPullOut, newPoly];
       }
       else
-        return [ null, poly ];
+        return [null, poly];
     }
-    
+
     private List<ASTNode> Polynomial2ndDegreeFactorization(ASTNode poly, ASTNode x)
     {
       ASTNode a = new ASTNode(Token.Integer("0"));
@@ -1420,7 +1529,7 @@ namespace CAS.Core
           throw new ArgumentException("'poly' is not a 2nd degree polynomial.");
       }
 
-      var discriminant = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode> 
+      var discriminant = AutomaticSimplify(new ASTNode(Token.Operator("-"), new List<ASTNode>
       {
         new ASTNode(Token.Operator("^"), new List<ASTNode> {b, new ASTNode(Token.Integer("2"))}),
         new ASTNode(Token.Operator("*"), new List<ASTNode>
