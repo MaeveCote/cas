@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.RightsManagement;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Navigation;
-
-namespace CAS.Core.EquationParsing
+﻿namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// A node to store data in an abstract syntax tree.

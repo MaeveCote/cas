@@ -1,28 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Design.Serialization;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Eventing.Reader;
-using System.Formats.Asn1;
-using System.Linq;
-using System.Net;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Security.Policy;
-using System.Security.RightsManagement;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Automation.Peers;
-using System.Windows.Automation.Provider;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Navigation;
-using System.Xml;
-using System.Xml.XPath;
-using CAS.Core.EquationParsing;
+﻿using CAS.Core.EquationParsing;
 
 namespace CAS.Core
 {

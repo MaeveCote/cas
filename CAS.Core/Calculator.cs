@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Dynamic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Controls;
-using CAS.Core.EquationParsing;
+﻿using CAS.Core.EquationParsing;
 
 namespace CAS.Core
 {
