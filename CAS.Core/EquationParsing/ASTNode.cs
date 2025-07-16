@@ -573,13 +573,8 @@
     public bool IsSum() => Token.Type.stringValue == "+";
     public bool IsFunction() => Token.Type is Function;
     public bool IsAddOrMultiply() => Token.Type.stringValue == "+" || Token.Type.stringValue == "*";
-    // public bool IsFactorial() => 
-    public bool IsPositive()
-    {
-      if (Token.Type is Number num)
-        return num.value > 0;
-      return false;
-    }
+    public bool IsUndefined() => Token.Type is Undefined;
+    public bool IsPositive() => EvaluateAsDouble() > 0;
 
     #endregion
 
