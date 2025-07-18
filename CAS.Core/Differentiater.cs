@@ -1,4 +1,6 @@
 ﻿using CAS.Core.EquationParsing;
+using System.Net.Quic;
+using System.Windows.Navigation;
 
 namespace CAS.Core
 {
@@ -24,32 +26,37 @@ namespace CAS.Core
     /// <remarks>This can be treated as a partial differentiation as it will consider the other variables as constants.</remarks>
     /// <param name="input">A function</param>
     /// <param name="x">A variable</param>
+    /// <param name="applySimplify">Wether you want to simplify or not. Default = true</param>
     /// <returns>The differentiated <paramref name="input"/></returns>
-    public ASTNode Differentiate(ASTNode input, ASTNode x)
+    public ASTNode Differentiate(ASTNode input, ASTNode x, bool applySimplify = true)
     {
       if (!(x.Token.Type is Variable diffVar))
         throw new ArgumentException("'x' is not a variable.");
 
+      ASTNode? result = null;
       if (input.IsConstant())
-        return ConstantRule(input, x);
+        result = ConstantRule(input, x);
       if (input.Token.Type is Variable symbol)
       {
         if (symbol.stringValue == diffVar.stringValue)
-          return ConstantRule(input, x);
-        return PowerRule(input, x);
+          result = ConstantRule(input, x);
+        result = PowerRule(input, x);
       }
       if (input.IsFunction())
-        return FunctionRule(input, x);
+        result = FunctionRule(input, x);
       if (input.Kind() == "^")
-        return PowerRule(input, x);
+        result = PowerRule(input, x);
       if (input.Kind() == "+" || input.Kind() == "-")
-        return SumDifferenceRule(input, x);
+        result = SumDifferenceRule(input, x);
       if (input.Kind() == "*")
-        return ProductRule(input, x);
+        result = ProductRule(input, x);
       if (input.Kind() == "/")
-        return QuotientRule(input, x);
+        result = QuotientRule(input, x);
 
-      throw new ArgumentException("'input' contains a token not supported by differentiation.");
+      if (result == null)
+        throw new ArgumentException("'input' contains a token not supported by differentiation.");
+
+      return Simplifier.AutomaticSimplify(result);
     }
 
     /// <summary>
@@ -69,41 +76,242 @@ namespace CAS.Core
       for (int i = 0; i < n; i++)
       {
         if (input.IsUndefined()) return ASTNode.NewUndefined();
-        tempTree = Differentiate(tempTree, x);
+        tempTree = Differentiate(tempTree, x, false);
       }
 
-      return tempTree;
+      return Simplifier.AutomaticSimplify(tempTree);
     }
 
     #region Private methods
 
-    private ASTNode ConstantRule(ASTNode power, ASTNode x)
+    private ASTNode ConstantRule(ASTNode constant, ASTNode x)
     {
-      return null;
+      // d/dx(x) = 1
+      if (constant.Token.Type is Variable variable && variable.stringValue == x.Kind())
+        return new ASTNode(Token.Integer("1"));
+
+      // d/dx(a) = 0
+      return new ASTNode(Token.Integer("0"));
     }
 
     private ASTNode PowerRule(ASTNode power, ASTNode x)
     {
-      return null;
+      var powBase = power.Base();
+      var powExp = power.Exponent();
+
+      // d/dx(f(x)^a) = a * f(x)^(a - 1) * d/dx(f(x)) 
+      if (powExp.IsConstant())
+      {
+        return new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(powExp),
+          new ASTNode(Token.Operator("^"), new List<ASTNode> {
+            new ASTNode(powBase), new ASTNode(Token.Operator("-"), new List<ASTNode> {
+              new ASTNode(powExp), 
+              new ASTNode(Token.Integer("1"))
+            })
+          }),
+          Differentiate(powBase, x, false)
+        });
+      }
+
+      // d/dx(a^f(x)) = ln(a) * a^(f(x)) * d/dx(f(x))
+      if (powBase.IsConstant())
+      {
+        return new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(power),
+          new ASTNode(Token.Function("ln"), new List<ASTNode> {
+            new ASTNode(powBase)
+          }),
+          Differentiate(powExp, x, false)
+        });
+      }
+
+      // Generic case
+      // d/dx(g(x)^f(x)) = (ln(g(x)) * d/dx(f(x)) + ((d/dx(g(x)) * f(x))) / g(x)) * (g(x) ^ f(x))
+      var leftProduct = new ASTNode(Token.Operator("*"), new List<ASTNode> { 
+        new ASTNode(Token.Function("ln"), new List<ASTNode> { new ASTNode(powBase) }),
+        Differentiate(powExp, x, false)
+      });
+      var rightQuotient = new ASTNode(Token.Operator("/"), new List<ASTNode> {
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          Differentiate(powBase, x, false),
+          new ASTNode(powExp)
+        }),
+        new ASTNode(powBase)
+      });
+      var innerSum = new ASTNode(Token.Operator("+"), new List<ASTNode> { 
+        leftProduct,
+        rightQuotient
+      });
+      return new ASTNode(Token.Operator("*"), new List<ASTNode>
+      {
+        innerSum,
+        new ASTNode(power)
+      });
     }
 
-    private ASTNode SumDifferenceRule(ASTNode power, ASTNode x)
+    private ASTNode SumDifferenceRule(ASTNode input, ASTNode x)
     {
-      return null;
+      // d/dx(f(x) +- g(x)) = d/dx(f(x)) +- d/dx(g(x))
+      var diffChildren = new List<ASTNode>();
+      foreach (var child in input.Children)
+        diffChildren.Add(Differentiate(child, x, false));
+
+      return new ASTNode(Token.Operator(input.Token.Type.stringValue), diffChildren);
     }
 
-    private ASTNode ProductRule(ASTNode power, ASTNode x)
+    private ASTNode ProductRule(ASTNode product, ASTNode x)
     {
-      return null;
+      if (product.Children.Count() == 0)
+        return new ASTNode(product);
+      if (product.Children.Count() == 1)
+        return Differentiate(product.Children[0], x, false);
+
+      if (product.Children.Count() != 2)
+      {
+        return Differentiate(new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Operator("*"), product.Children.GetRange(0, product.Children.Count() - 1)),
+          product.Children[product.Children.Count() - 1]
+        }), x, false);
+      }
+
+      // d/dx(f(x) * g(x)) = f(x) * d/dx(g(x)) + d/dx(f(x)) * g(x)
+      return new ASTNode(Token.Operator("+"), new List<ASTNode> {
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(product.Children[0]),
+          Differentiate(product.Children[1], x, false)
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          Differentiate(product.Children[0], x, false),
+          new ASTNode(product.Children[1])
+        }),
+      });
     }
 
-    private ASTNode QuotientRule(ASTNode power, ASTNode x)
+    private ASTNode QuotientRule(ASTNode quotient, ASTNode x)
     {
-      return null;
+      // d/dx(f(x)/g(x)) = (d/dx(f(x)) * g(x) - f(x) * d/dx(g(x))) / (g(x)^2)
+      var num = new ASTNode(Token.Operator("-"), new List<ASTNode> { 
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          Differentiate(quotient.Children[0], x, false),
+          new ASTNode(quotient.Children[1])
+        }),
+        new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(quotient.Children[0]),
+          Differentiate(quotient.Children[1], x, false)
+        })
+      });
+      return new ASTNode(Token.Operator("/"), new List<ASTNode>
+      {
+        num,
+        new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(quotient.Children[1]),
+          new ASTNode(Token.Integer("2"))
+        })
+      });
     }
 
-    private ASTNode FunctionRule(ASTNode power, ASTNode x)
+    private ASTNode FunctionRule(ASTNode function, ASTNode x)
     {
+      // ---------- Logarithms ----------
+      // d/dx(ln(f(x))) = d/dx(f(x))/f(x)
+      if (function.Kind().ToLower() == "ln")
+      {
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          Differentiate(function.Children[0], x, false),
+          new ASTNode(function.Children[0])
+        });
+      }
+      
+      // d/dx(log(f(x), a)) = d/dx(f(x))/(f(x) * ln(a))
+      if (function.Kind().ToLower() == "log")
+      {
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          Differentiate(function.Children[0], x, false),
+          new ASTNode(Token.Operator("*"), new List<ASTNode> {
+            new ASTNode(function.Children[0]),
+            new ASTNode(Token.Function("ln"), new List<ASTNode> { new ASTNode(function.Children[1]) })
+          })
+        });
+      }
+
+
+      // ---------- Trigonometric functions ----------
+      // d/dx(sin(f(x))) = cos(f(x)) * d/dx(f(x))
+      if (function.Kind().ToLower() == "sin")
+      {
+        return new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Function("cos"), new List<ASTNode> { new ASTNode(function.Children[0]) }),
+          Differentiate(function.Children[0], x, false)
+        });
+      }
+
+      // d/dx(cos(f(x))) = -sin(f(x)) * d/dx(f(x))
+      if (function.Kind().ToLower() == "cos")
+      {
+        return new ASTNode(Token.Operator("*"), new List<ASTNode> {
+          new ASTNode(Token.Operator("-"), new List<ASTNode> { 
+            new ASTNode(Token.Function("cos"), new List<ASTNode> { new ASTNode(function.Children[0]) }) 
+          }),
+          Differentiate(function.Children[0], x, false)
+        });
+      }
+
+      // d/dx(tan(f(x))) = d/dx(f(x))/(cos(f(x))) ^ 2
+      if (function.Kind().ToLower() == "tan")
+      {
+      }
+      
+      // d/dx(sec(f(x))) = d/dx(1/cos(f(x)))
+      if (function.Kind().ToLower() == "sec")
+      {
+      }
+
+      // d/dx(csc(f(x))) = d/dx(1/sin(f(x)))
+      if (function.Kind().ToLower() == "csc")
+      {
+      }
+
+      // d/dx(cot(f(x))) = d/dx(cos(f(x))/sin(f(x)))
+      if (function.Kind().ToLower() == "cot")
+      {
+      }
+
+      // d/dx(Arcsin(f(x))) = d/dx(f(x))/(1 - f(x)^2)^1/2
+      if (function.Kind().ToLower() == "arcsin")
+      {
+      }
+
+      // d/dx(Arccos(f(x))) = -d/dx(f(x))/(1 - f(x)^2)^1/2
+      if (function.Kind().ToLower() == "arccos")
+      {
+      }
+
+      // d/dx(Arctan(f(x))) = d/dx(f(x))/(1 + f(x)^2)
+      if (function.Kind().ToLower() == "arctan")
+      {
+      }
+
+      // d/dx(Arcsec(f(x))) = (d/dx(f(x)) / (f(x) * (f(x)^2 - 1)^(1/2))
+      if (function.Kind().ToLower() == "arcsec")
+      {
+      }
+
+      // d/dx(Arccsc(f(x))) = (-d/dx(f(x)) / (f(x) * (f(x)^2 - 1)^(1/2))
+      if (function.Kind().ToLower() == "arccsc")
+      {
+      }
+
+      // d/dx(Arcsec(f(x))) = (-d/dx(f(x)) / (f(x)^2 + 1)
+      if (function.Kind().ToLower() == "arcsec")
+      {
+      }
+
+      // Generic functions fallback (rename with a prime ('))
+      // d/dx(f(x)) = f'(x)
       return null;
     }
 
