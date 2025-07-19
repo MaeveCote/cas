@@ -593,7 +593,12 @@
       if (obj is not ASTNode other)
         return false;
 
-      if (Token.Type.stringValue != other.Token.Type.stringValue)
+      if (other.Token.Type is Number num1 && Token.Type is Number num2)
+      {
+        if (Math.Abs(num1.value - num2.value) > 0.0001)
+          return false;
+      }
+      else if (Token.Type.stringValue != other.Token.Type.stringValue)
         return false;
 
       if (Children.Count != other.Children.Count)

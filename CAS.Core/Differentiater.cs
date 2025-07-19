@@ -1,4 +1,5 @@
 ﻿using CAS.Core.EquationParsing;
+using System.DirectoryServices.ActiveDirectory;
 using System.Net.Quic;
 using System.Windows.Navigation;
 
@@ -38,9 +39,7 @@ namespace CAS.Core
         result = ConstantRule(input, x);
       if (input.Token.Type is Variable symbol)
       {
-        if (symbol.stringValue == diffVar.stringValue)
-          result = ConstantRule(input, x);
-        result = PowerRule(input, x);
+        result = ConstantRule(input, x);
       }
       if (input.IsFunction())
         result = FunctionRule(input, x);
@@ -254,7 +253,7 @@ namespace CAS.Core
       {
         return new ASTNode(Token.Operator("*"), new List<ASTNode> {
           new ASTNode(Token.Operator("-"), new List<ASTNode> { 
-            new ASTNode(Token.Function("cos"), new List<ASTNode> { new ASTNode(function.Children[0]) }) 
+            new ASTNode(Token.Function("sin"), new List<ASTNode> { new ASTNode(function.Children[0]) }) 
           }),
           Differentiate(function.Children[0], x, false)
         });
@@ -263,56 +262,200 @@ namespace CAS.Core
       // d/dx(tan(f(x))) = d/dx(f(x))/(cos(f(x))) ^ 2
       if (function.Kind().ToLower() == "tan")
       {
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          Differentiate(function.Children[0], x, false),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(Token.Function("cos"), new List<ASTNode> { new ASTNode(function.Children[0]) }),
+            new ASTNode(Token.Integer("2"))
+          })
+        });
       }
       
       // d/dx(sec(f(x))) = d/dx(1/cos(f(x)))
       if (function.Kind().ToLower() == "sec")
       {
+        return Differentiate(new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Function("cos"), new List<ASTNode> { new ASTNode(function.Children[0]) })
+        }), x, false);
       }
 
       // d/dx(csc(f(x))) = d/dx(1/sin(f(x)))
       if (function.Kind().ToLower() == "csc")
       {
+        return Differentiate(new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Function("sin"), new List<ASTNode> { new ASTNode(function.Children[0]) })
+        }), x, false);
       }
 
       // d/dx(cot(f(x))) = d/dx(cos(f(x))/sin(f(x)))
       if (function.Kind().ToLower() == "cot")
       {
+        return Differentiate(new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Function("cos"), new List<ASTNode> { new ASTNode(function.Children[0]) }),
+          new ASTNode(Token.Function("sin"), new List<ASTNode> { new ASTNode(function.Children[0]) })
+        }), x, false);
       }
 
       // d/dx(Arcsin(f(x))) = d/dx(f(x))/(1 - f(x)^2)^1/2
       if (function.Kind().ToLower() == "arcsin")
       {
+        var denum = new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("1")),
+            new ASTNode(Token.Operator("^"), new List<ASTNode>
+            {
+              new ASTNode(function.Children[0]),
+              new ASTNode(Token.Integer("2"))
+            })
+          }),
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2"))
+          })
+        });
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          Differentiate(function.Children[0], x, false),
+          denum
+        });
       }
 
       // d/dx(Arccos(f(x))) = -d/dx(f(x))/(1 - f(x)^2)^1/2
       if (function.Kind().ToLower() == "arccos")
       {
+        var denum = new ASTNode(Token.Operator("^"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("1")),
+            new ASTNode(Token.Operator("^"), new List<ASTNode>
+            {
+              new ASTNode(function.Children[0]),
+              new ASTNode(Token.Integer("2"))
+            })
+          }),
+          new ASTNode(Token.Fraction(), new List<ASTNode>
+          {
+            new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2"))
+          })
+        });
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode> { Differentiate(function.Children[0], x, false) }),
+          denum
+        });
       }
 
       // d/dx(Arctan(f(x))) = d/dx(f(x))/(1 + f(x)^2)
       if (function.Kind().ToLower() == "arctan")
       {
+        var denum = new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(function.Children[0]),
+            new ASTNode(Token.Integer("2"))
+          })
+        });
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          Differentiate(function.Children[0], x, false),
+          denum
+        });
       }
 
       // d/dx(Arcsec(f(x))) = (d/dx(f(x)) / (f(x) * (f(x)^2 - 1)^(1/2))
       if (function.Kind().ToLower() == "arcsec")
       {
+        var denum = new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(function.Children[0]),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("-"), new List<ASTNode>
+            {
+              new ASTNode(Token.Operator("^"), new List<ASTNode>
+              {
+                new ASTNode(function.Children[0]),
+                new ASTNode(Token.Integer("2"))
+              }),
+              new ASTNode(Token.Integer("1"))
+            }),
+            new ASTNode(Token.Fraction(), new List<ASTNode>
+            {
+              new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2"))
+            })
+          })
+        });
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          Differentiate(function.Children[0], x, false),
+          denum
+        });
       }
 
       // d/dx(Arccsc(f(x))) = (-d/dx(f(x)) / (f(x) * (f(x)^2 - 1)^(1/2))
       if (function.Kind().ToLower() == "arccsc")
       {
+        var denum = new ASTNode(Token.Operator("*"), new List<ASTNode>
+        {
+          new ASTNode(function.Children[0]),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(Token.Operator("-"), new List<ASTNode>
+            {
+              new ASTNode(Token.Operator("^"), new List<ASTNode>
+              {
+                new ASTNode(function.Children[0]),
+                new ASTNode(Token.Integer("2"))
+              }),
+              new ASTNode(Token.Integer("1"))
+            }),
+            new ASTNode(Token.Fraction(), new List<ASTNode>
+            {
+              new ASTNode(Token.Integer("1")), new ASTNode(Token.Integer("2"))
+            })
+          })
+        });
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode> { Differentiate(function.Children[0], x, false) }),
+          denum
+        });
       }
 
-      // d/dx(Arcsec(f(x))) = (-d/dx(f(x)) / (f(x)^2 + 1)
-      if (function.Kind().ToLower() == "arcsec")
+      // d/dx(Arccot(f(x))) = (-d/dx(f(x)) / (f(x)^2 + 1)
+      if (function.Kind().ToLower() == "arccot")
       {
+        var denum = new ASTNode(Token.Operator("+"), new List<ASTNode>
+        {
+          new ASTNode(Token.Integer("1")),
+          new ASTNode(Token.Operator("^"), new List<ASTNode>
+          {
+            new ASTNode(function.Children[0]),
+            new ASTNode(Token.Integer("2"))
+          })
+        });
+        return new ASTNode(Token.Operator("/"), new List<ASTNode>
+        {
+          new ASTNode(Token.Operator("-"), new List<ASTNode> { Differentiate(function.Children[0], x, false) }),
+          denum
+        });
       }
 
       // Generic functions fallback (rename with a prime ('))
       // d/dx(f(x)) = f'(x)
-      return null;
+      return new ASTNode(Token.Function(function.Kind() + "'"), function.Children);
     }
 
     #endregion
