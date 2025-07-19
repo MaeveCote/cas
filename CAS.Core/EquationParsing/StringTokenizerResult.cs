@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CAS.Core.EquationParsing
+﻿namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// Holds the result of the <see cref="StringTokenizer"/> process.

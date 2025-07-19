@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.DirectoryServices;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CAS.Core.EquationParsing
+﻿namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// Builds an Abstract Syntax Tree from a list of tokens in infix notation.

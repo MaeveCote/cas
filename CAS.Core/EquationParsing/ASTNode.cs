@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.RightsManagement;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Navigation;
-
-namespace CAS.Core.EquationParsing
+﻿namespace CAS.Core.EquationParsing
 {
   /// <summary>
   /// A node to store data in an abstract syntax tree.
@@ -581,13 +573,8 @@ namespace CAS.Core.EquationParsing
     public bool IsSum() => Token.Type.stringValue == "+";
     public bool IsFunction() => Token.Type is Function;
     public bool IsAddOrMultiply() => Token.Type.stringValue == "+" || Token.Type.stringValue == "*";
-    // public bool IsFactorial() => 
-    public bool IsPositive()
-    {
-      if (Token.Type is Number num)
-        return num.value > 0;
-      return false;
-    }
+    public bool IsUndefined() => Token.Type is Undefined;
+    public bool IsPositive() => EvaluateAsDouble() > 0;
 
     #endregion
 
@@ -606,7 +593,12 @@ namespace CAS.Core.EquationParsing
       if (obj is not ASTNode other)
         return false;
 
-      if (Token.Type.stringValue != other.Token.Type.stringValue)
+      if (other.Token.Type is Number num1 && Token.Type is Number num2)
+      {
+        if (Math.Abs(num1.value - num2.value) > 0.0001)
+          return false;
+      }
+      else if (Token.Type.stringValue != other.Token.Type.stringValue)
         return false;
 
       if (Children.Count != other.Children.Count)
