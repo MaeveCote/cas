@@ -875,7 +875,7 @@
 
               // If both previous and current are constants (Number or IntegerNum), insert \cdot
               if ((prev.Token.Type is Number || prev.Token.Type is IntegerNum) &&
-                  (current.Token.Type is Number || current.Token.Type is IntegerNum))
+                  (current.Token.Type is Number || current.Token.Type is IntegerNum || current.Token.Type is Function))
               {
                 parts.Add(" \\cdot ");
               }

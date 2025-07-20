@@ -35,6 +35,7 @@ namespace CAS.Desktop.Views
     private Dictionary<string, Func<List<double>, double>> CustomFunctions { get; set; }
     private string CurrentAction { get; set; }
     private Simplifier simplifier { get; set; }
+    private Differentiater differentiater { get; set; }
 
     private Timer debounceTimer;
 
@@ -46,6 +47,7 @@ namespace CAS.Desktop.Views
       CurrentAction = "NoAction";
       debounceTimer = new Timer();
       simplifier = new Simplifier();
+      differentiater = new Differentiater(simplifier);
       SetWebViews();
     }
 
@@ -262,7 +264,7 @@ namespace CAS.Desktop.Views
       {
         FunctionList.Children.Remove(border);
         CustomFunctions.Remove(functionName);
-        };
+      };
 
       horizontalPanel.Children.Add(textBlock);
       horizontalPanel.Children.Add(deleteButton);
@@ -283,6 +285,15 @@ namespace CAS.Desktop.Views
       else
       {
         SettingsSidebar.Visibility = Visibility.Visible;
+      }
+    }
+
+    private void InputTextBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+      if (e.Key == Windows.System.VirtualKey.Enter)
+      {
+        RunAction(sender, e);
+        e.Handled = true;
       }
     }
 
@@ -543,6 +554,32 @@ namespace CAS.Desktop.Views
 
           simplifier.PostFormatTree(finalResulTree);
           resultLatex = finalResulTree.ToLatex();
+        }
+        catch (Exception ex)
+        {
+          ShowErrorPopup(ex.Message);
+          return;
+        }
+      }
+      else if (CurrentAction == "Differentiation")
+      {
+        try
+        {
+          Logger.LogInfo("Running 'Differentiation'");
+
+          var tokenizerResult = StringTokenizer.Tokenize(equation);
+          var tree = ASTBuilder.ParseInfixToAST(tokenizerResult.TokenizedExpression);
+
+          int differentiationAmount = 0;
+          if (!(int.TryParse(DifferentiationCountBox.Text, out differentiationAmount)))
+            throw new ArgumentException("The differentiation count has to be a positive integer.");
+
+          var differentiationVar = new ASTNode(Token.Variable(DifferentiationVarBox.Text));
+
+          simplifier.FormatTree(tree);
+          var differentiated = differentiater.NDifferentiate(tree, differentiationVar, differentiationAmount);
+          simplifier.PostFormatTree(differentiated);
+          resultLatex = differentiated.ToLatex();
         }
         catch (Exception ex)
         {
