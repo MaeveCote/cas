@@ -12,9 +12,9 @@
     <Grid Background="{ThemeResource BackgroundBrush}">
         <!-- Columns: Sidebar | Main UI | Variables -->
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"/>
-            <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="250"/>
         </Grid.ColumnDefinitions>
 
         <!-- Rows: Title bar + Content -->
@@ -59,7 +59,7 @@
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
-                MinWidth="120"
+                HorizontalAlignment="Stretch"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
 
@@ -69,7 +69,7 @@
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
-                MinWidth="120"
+                HorizontalAlignment="Stretch"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
 
@@ -79,18 +79,64 @@
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
-                MinWidth="120"
+                HorizontalAlignment="Stretch"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
+
             <ToggleButton x:Name="PolynomialDivisionToggle"
                 Content="Polynomial div"
                 Click="OnClickActionToggle"
                 Margin="0,0,0,10"
                 Padding="12,6"
                 FontSize="16"
-                MinWidth="120"
+                HorizontalAlignment="Stretch"
                 Background="{ThemeResource Surface1}"
                 Foreground="{ThemeResource TextBrush}"/>
+
+           
+            <StackPanel Margin="0,0,0,10"
+                Background="{ThemeResource Surface1}"
+                Padding="10"
+                Spacing="10"
+                CornerRadius="8">
+
+                <ToggleButton x:Name="DifferentiationToggle"
+                    Content="Differentiation"
+                    Click="OnClickActionToggle"
+                    Padding="12,6"
+                    FontSize="16"
+                    HorizontalAlignment="Stretch"
+                    Background="{ThemeResource Surface1}"
+                    Foreground="{ThemeResource TextBrush}"/>
+
+                <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Left"
+                    Margin="10,0,0,10"
+                    Spacing="10">
+
+                    <TextBox x:Name="DifferentiationCountBox"
+                        PlaceholderText="N"
+                        Text="1"
+                        Width="60"
+                        Padding="4"
+                        VerticalAlignment="Center"
+                        TextAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Background="{ThemeResource Surface1Brush}"
+                        Foreground="{ThemeResource TextBrush}"/>
+
+                    <TextBox x:Name="DifferentiationVarBox"
+                        PlaceholderText="x"
+                        Text="x"
+                        Width="60"
+                        Padding="4"
+                        VerticalAlignment="Center"
+                        TextAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        Background="{ThemeResource Surface1Brush}"
+                        Foreground="{ThemeResource TextBrush}"/>
+                </StackPanel>
+            </StackPanel>
         </StackPanel>
 
         <!-- Main UI -->
@@ -106,7 +152,8 @@
                     Margin="0,0,10,0"
                     Background="{ThemeResource CardBrush}"
                     Foreground="{ThemeResource TextBrush}"
-                    TextChanged="RenderInputLaTeX"/>
+                    TextChanged="RenderInputLaTeX"
+                    KeyDown="InputTextBox_KeyDown"/>
 
                 <Button Content="Run" Click="RunAction"
                     Grid.Column="1"
@@ -155,12 +202,12 @@
 
                 <StackPanel Orientation="Horizontal" Spacing="5">
                     <TextBox x:Name="VarNameBox"
-                     Width="60"
+                     Width="80"
                      PlaceholderText="Name"
                      Background="{ThemeResource Surface1}"
                      Foreground="{ThemeResource TextBrush}"/>
                     <TextBox x:Name="VarValueBox"
-                     Width="70"
+                     Width="100"
                      PlaceholderText="Value"
                      Background="{ThemeResource Surface1}"
                      Foreground="{ThemeResource TextBrush}"/>
@@ -178,12 +225,12 @@
 
                 <StackPanel Orientation="Horizontal" Spacing="5">
                     <TextBox x:Name="FuncNameBox"
-                     Width="60"
+                     Width="80"
                      PlaceholderText="Name"
                      Background="{ThemeResource Surface1}"
                      Foreground="{ThemeResource TextBrush}"/>
                     <TextBox x:Name="FuncValueBox"
-                     Width="70"
+                     Width="100"
                      PlaceholderText="Expression"
                      Background="{ThemeResource Surface1}"
                      Foreground="{ThemeResource TextBrush}"/>
