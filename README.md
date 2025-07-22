@@ -80,10 +80,12 @@ The **`Simplifier`** class provides core functionality for reducing and transfor
 - **`AutomaticSimplify(ASTNode input)`**  
   Simplifies the input according to standard mathematical conventions.  
   *(Note: "simplified" can be subjective — the method aims to return a form commonly accepted as simplified.)*
+
   ![Screenshot](Assets/Screenshots/Simplify1.PNG)
 
 - **`Expand(ASTNode input)`**  
   Expands all products and powers within the expression.
+
   ![Screenshot](Assets/Screenshots/Expand.PNG)
 
 - **`FormatTree(ASTNode input)`**  
@@ -96,11 +98,13 @@ The **`Simplifier`** class provides core functionality for reducing and transfor
 
 - **`PolynomialDivision(ASTNode u, ASTNode v, ASTNode x)`**  
   Performs polynomial division of `u` by `v`, treating both as polynomials in the variable `x`.
+
   ![Screenshot](Assets/Screenshots/PolynomialDivision.PNG)
 
 - **`PolynomialFactorization(ASTNode poly, ASTNode x)`**  
   Factorizes `poly` with respect to the variable `x`.  
   - Currently supports factoring out common terms and factoring quadratics (second-degree polynomials).
+  
   ![Screenshot](Assets/Screenshots/Factor.PNG)
 
 ### 🧮 Calculator
